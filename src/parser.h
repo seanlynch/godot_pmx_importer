@@ -21,13 +21,6 @@ typedef struct {
   char model_name_universal[PMX_STRING_MAX];
   char comment_local[PMX_STRING_MAX];
   char comment_universal[PMX_STRING_MAX];
-  uint_fast32_t vertex_count;
-  uint_fast32_t index_count;
-  uint_fast32_t texture_count;
-  uint_fast32_t material_count;
-  uint_fast32_t bone_count;
-  uint_fast32_t morph_count;
-  uint_fast32_t rigidbody_count;
 } pmx_model_info_t;
 
 typedef enum {
@@ -60,11 +53,17 @@ typedef struct {
   float outline_scale;
 } pmx_vertex_t;
 
+struct pmx_parse_state;
+
 typedef struct {
-  int (*pre_vertex_cb)(pmx_model_info_t *model, void *userdata);
-  int (*vertex_cb)(pmx_vertex_t *vertex, void *userdata);
-  int (*pre_triangle_cb)();
-  int (*triangle_cb)(int_fast32_t idx1, int_fast32_t idx2, int_fast32_t idx3, void *userdata);
+  int (*model_info_cb)(pmx_model_info_t *model, void *userdata);
+  int (*vertex_cb)(struct pmx_parse_state *parse_state, int_fast32_t vertex_count, void *userdata);
+  int (*triangle_cb)(struct pmx_parse_state *parse_state, int_fast32_t triangle_count, void *userdata);
 } pmx_parser_callbacks_t;
 
-int pmx_parser_parse(const char *filename, const pmx_parser_callbacks_t *callbacks, void *userdata);
+int pmx_parser_parse(const char *filename,
+                     const pmx_parser_callbacks_t *callbacks, void *userdata);
+int pmx_parser_next_vertex(struct pmx_parse_state *state, pmx_vertex_t *vertex);
+int pmx_parser_next_triangle_uint8(struct pmx_parse_state *state, uint8_t *buf);
+int pmx_parser_next_triangle_uint16(struct pmx_parse_state *state, uint16_t *buf);
+int pmx_parser_next_triangle_int32(struct pmx_parse_state *state, int32_t *buf);
