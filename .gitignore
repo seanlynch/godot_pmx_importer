@@ -1,0 +1,6 @@
+*.os
+*~
+/.compile_commands.json
+/.sconsign.dblite
+/.cache/
+/compile_commands.json
