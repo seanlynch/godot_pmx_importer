@@ -4,3 +4,5 @@
 /.sconsign.dblite
 /.cache/
 /compile_commands.json
+/project/.import/
+*.import
