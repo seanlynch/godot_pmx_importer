@@ -19,6 +19,10 @@ typedef struct {
   godot_pool_vector3_array normals;
   godot_pool_vector2_array uvs;
   godot_pool_int_array triangles;
+  godot_pool_int_array bones;
+  godot_pool_real_array weights;
+  godot_array textures;
+  godot_array materials;
 } pmx_importer_userdata_t;
 
 static void *pmx_constructor(godot_object *obj, void *method_data) {
@@ -27,6 +31,10 @@ static void *pmx_constructor(godot_object *obj, void *method_data) {
   api->godot_pool_vector3_array_new(&userdata->normals);
   api->godot_pool_vector2_array_new(&userdata->uvs);
   api->godot_pool_int_array_new(&userdata->triangles);
+  api->godot_pool_int_array_new(&userdata->bones);
+  api->godot_pool_real_array_new(&userdata->weights);
+  api->godot_array_new(&userdata->textures);
+  api->godot_array_new(&userdata->materials);
   return userdata;
 }
 
@@ -40,6 +48,10 @@ static void pmx_destructor(godot_object *obj, void *method_data, void *userdata_
   api->godot_pool_vector3_array_destroy(&userdata->normals);
   api->godot_pool_vector2_array_destroy(&userdata->uvs);
   api->godot_pool_int_array_destroy(&userdata->triangles);
+  api->godot_pool_int_array_destroy(&userdata->bones);
+  api->godot_pool_real_array_destroy(&userdata->weights);
+  api->godot_array_destroy(&userdata->textures);
+  api->godot_array_destroy(&userdata->materials);
   api->godot_free(userdata);
 }
 
@@ -49,7 +61,60 @@ static int pmx_importer_model_info_cb(pmx_model_info_t *model, void *userdata_vo
   userdata->model_name_universal = api->godot_string_chars_to_utf8(model->model_name_universal);
   userdata->comment_local = api->godot_string_chars_to_utf8(model->comment_local);
   userdata->comment_universal = api->godot_string_chars_to_utf8(model->comment_universal);
+  switch (model->text_encoding) {
+  case utf16le:
+    printf("Encoding for \"%s\" is utf16le\n", model->model_name_local);
+    break;
+  case utf8:
+    printf("Encoding for \"%s\" is utf8\n", model->model_name_local);
+    break;
+  }
   return 0;
+}
+
+static void pmx_importer_parse_bone_weights(pmx_importer_userdata_t *userdata, pmx_vertex_t *vertex, uint_fast32_t i) {
+  godot_int index = i * 4;
+  int_fast32_t *bones = vertex->deform.non_sdef.bones;
+  float *weights = vertex->deform.non_sdef.weights;
+  float renorm;
+  switch (vertex->deform_type) {
+  case bdef1:
+    api->godot_pool_int_array_set(&userdata->bones, i, bones[0]);
+    api->godot_pool_real_array_set(&userdata->weights, i++, 1.0);
+    api->godot_pool_int_array_set(&userdata->bones, i, -1);
+    api->godot_pool_real_array_set(&userdata->weights, i++, 0.0);
+    api->godot_pool_int_array_set(&userdata->bones, i, -1);
+    api->godot_pool_real_array_set(&userdata->weights, i++, 0.0);
+    api->godot_pool_int_array_set(&userdata->bones, i, -1);
+    api->godot_pool_real_array_set(&userdata->weights, i, 0.0);
+    break;
+  case bdef2:
+    api->godot_pool_int_array_set(&userdata->bones, i, bones[0]);
+    api->godot_pool_real_array_set(&userdata->weights, i++, weights[0]);
+    api->godot_pool_int_array_set(&userdata->bones, i, bones[1]);
+    api->godot_pool_real_array_set(&userdata->weights, i++, 1.0-weights[0]);
+    api->godot_pool_int_array_set(&userdata->bones, i, -1);
+    api->godot_pool_real_array_set(&userdata->weights, i++, 0.0);
+    api->godot_pool_int_array_set(&userdata->bones, i, -1);
+    api->godot_pool_real_array_set(&userdata->weights, i, 0.0);
+    break;
+  case bdef4:
+    /* Make the weights sum to 1 by renormalizing */
+    renorm = 1.0 / (weights[0] + weights[1] + weights[2] + weights[3]);
+    api->godot_pool_int_array_set(&userdata->bones, i, bones[0]);
+    api->godot_pool_real_array_set(&userdata->weights, i++, weights[0] * renorm);
+    api->godot_pool_int_array_set(&userdata->bones, i, bones[1]);
+    api->godot_pool_real_array_set(&userdata->weights, i++, weights[1] * renorm);
+    api->godot_pool_int_array_set(&userdata->bones, i, bones[2]);
+    api->godot_pool_real_array_set(&userdata->weights, i++, weights[2] * renorm);
+    api->godot_pool_int_array_set(&userdata->bones, i, bones[3]);
+    api->godot_pool_real_array_set(&userdata->weights, i, weights[3] * renorm);
+    break;
+  case qdef:
+  case sdef:
+    fprintf(stderr, "Unhandled %s weights\n", pmx_deform_type_string(vertex->deform_type));
+    break;
+  }
 }
 
 static int pmx_importer_vertex_cb(struct pmx_parse_state *state, int_fast32_t vertex_count, void *userdata_void) {
@@ -63,12 +128,11 @@ static int pmx_importer_vertex_cb(struct pmx_parse_state *state, int_fast32_t ve
   printf("Got %ld vertices\n", vertex_count);
 
   /* Reserve space for the vertex data */
-  api->godot_pool_vector3_array_new(&userdata->positions);
   api->godot_pool_vector3_array_resize(&userdata->positions, vertex_count);
-  api->godot_pool_vector3_array_new(&userdata->normals);
   api->godot_pool_vector3_array_resize(&userdata->normals, vertex_count);
-  api->godot_pool_vector2_array_new(&userdata->uvs);
   api->godot_pool_vector2_array_resize(&userdata->uvs, vertex_count);
+  api->godot_pool_int_array_resize(&userdata->bones, vertex_count * 4);
+  api->godot_pool_real_array_resize(&userdata->weights, vertex_count * 4);
   for (int i = 0; i < vertex_count; i++) {
     ret = pmx_parser_next_vertex(state, &vertex);
     if (ret != 0) return ret;
@@ -78,8 +142,8 @@ static int pmx_importer_vertex_cb(struct pmx_parse_state *state, int_fast32_t ve
     api->godot_pool_vector3_array_set(&userdata->normals, i, &vec3);
     api->godot_vector2_new(&vec2, vertex.uv[0], vertex.uv[1]);
     api->godot_pool_vector2_array_set(&userdata->uvs, i, &vec2);
+    pmx_importer_parse_bone_weights(userdata, &vertex, i);
   }
-  /* TODO bone deformations */
   return 0;
 }
 
@@ -99,9 +163,47 @@ static int pmx_importer_triangle_cb(struct pmx_parse_state *state, int_fast32_t 
       fprintf(stderr, "Bad index");
       return -1;
     }
+
+    /* Reverse the winding direction */
     api->godot_pool_int_array_set(&userdata->triangles, j++, triangle[2]);
     api->godot_pool_int_array_set(&userdata->triangles, j++, triangle[1]);
     api->godot_pool_int_array_set(&userdata->triangles, j++, triangle[0]);
+  }
+  return 0;
+}
+
+static int pmx_importer_texture_cb(struct pmx_parse_state *state, int_fast32_t texture_count, void *userdata_void) {
+  pmx_importer_userdata_t *userdata = userdata_void;
+  godot_string name;
+  godot_variant name_variant;
+  char buf[256];
+  int result;
+  for (int i = 0; i < texture_count; i++) {
+    result = pmx_parser_next_texture(state, buf, sizeof buf);
+    if (result != 0) {
+      return result;
+    }
+    name = api->godot_string_chars_to_utf8(buf);
+    api->godot_variant_new_string(&name_variant, &name);
+    api->godot_array_push_back(&userdata->textures, &name_variant);
+    api->godot_variant_destroy(&name_variant);
+    api->godot_string_destroy(&name);
+  }
+  return 0;
+}
+
+static int pmx_importer_material_cb(struct pmx_parse_state *state, int_fast32_t count, void *userdata_void) {
+  pmx_importer_userdata_t *userdata = userdata_void;
+  godot_string name;
+  godot_variant name_variant;
+  int result;
+  pmx_material_t material;
+
+  printf("Got %ld materials\n", count);
+  for (int i = 0; i < count; i++) {
+    result = pmx_parser_next_material(state, &material);
+    if (result != 0) return result;
+    printf("Got material %s\n", material.name_local);
   }
   return 0;
 }
@@ -110,7 +212,9 @@ static const pmx_parser_callbacks_t parser_callbacks =
   {
    .model_info_cb = pmx_importer_model_info_cb,
    .vertex_cb = pmx_importer_vertex_cb,
-   .triangle_cb = pmx_importer_triangle_cb
+   .triangle_cb = pmx_importer_triangle_cb,
+   .texture_cb = pmx_importer_texture_cb,
+   .material_cb = pmx_importer_material_cb
   };
 
 godot_variant pmx_parse(godot_object *obj, void *method_data, void *userdata_void, int num_args, godot_variant **args) {
@@ -215,6 +319,17 @@ godot_variant pmx_get_triangles(godot_object *obj, void *method_data,
 }
 
 
+godot_variant pmx_get_textures(godot_object *obj, void *method_data,
+			       void *userdata_void, int num_args,
+			       godot_variant **args) {
+  pmx_importer_userdata_t *userdata = userdata_void;
+  godot_variant ret;
+
+  api->godot_variant_new_array(&ret, &userdata->textures);
+  return ret;
+}
+
+
 /** Library entry point **/
 void GDN_EXPORT godot_gdnative_init(godot_gdnative_init_options *o) {
   api = o->api_struct;
@@ -261,4 +376,6 @@ void GDN_EXPORT godot_nativescript_init(void *desc) {
   nativescript_api->godot_nativescript_register_method(desc, "PMX", "get_uvs", attr, method);
   method.method = &pmx_get_triangles;
   nativescript_api->godot_nativescript_register_method(desc, "PMX", "get_triangles", attr, method);
+  method.method = &pmx_get_textures;
+  nativescript_api->godot_nativescript_register_method(desc, "PMX", "get_textures", attr, method);
 }

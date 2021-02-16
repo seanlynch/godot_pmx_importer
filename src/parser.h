@@ -53,13 +53,36 @@ typedef struct {
   float outline_scale;
 } pmx_vertex_t;
 
+typedef struct {
+  char name_local[PMX_STRING_MAX];
+  char name_universal[PMX_STRING_MAX];
+  float diffuse[4];
+  float specular[3];
+  float specularity;
+  float ambient[3];
+  uint8_t flags;
+  float edge_color[4];
+  float edge_scale;
+  int_fast32_t texture;
+  int_fast32_t environment;
+  enum { disabled=0, multiplicative=2, additive=3, addl_vec4=4 } environment_blend_mode;
+  enum { texture_ref=0, internal_ref=1 } toon_type;
+  int_fast32_t toon;  /* Meaning depends on toon_type */
+  char metadata[PMX_STRING_MAX];
+  int_fast32_t triangle_count;  /* Number of triangles to apply this material to */
+} pmx_material_t;
+
 struct pmx_parse_state;
 
 typedef struct {
   int (*model_info_cb)(pmx_model_info_t *model, void *userdata);
   int (*vertex_cb)(struct pmx_parse_state *parse_state, int_fast32_t vertex_count, void *userdata);
   int (*triangle_cb)(struct pmx_parse_state *parse_state, int_fast32_t triangle_count, void *userdata);
+  int (*texture_cb)(struct pmx_parse_state *parse_state, int_fast32_t texture_count, void *userdata);
+  int (*material_cb)(struct pmx_parse_state *parse_state, int_fast32_t material_count, void *userdata);
 } pmx_parser_callbacks_t;
+
+const char *pmx_deform_type_string(pmx_deform_type_t t);
 
 int pmx_parser_parse(const char *filename,
                      const pmx_parser_callbacks_t *callbacks, void *userdata);
@@ -67,3 +90,6 @@ int pmx_parser_next_vertex(struct pmx_parse_state *state, pmx_vertex_t *vertex);
 int pmx_parser_next_triangle_uint8(struct pmx_parse_state *state, uint8_t *buf);
 int pmx_parser_next_triangle_uint16(struct pmx_parse_state *state, uint16_t *buf);
 int pmx_parser_next_triangle_int32(struct pmx_parse_state *state, int32_t *buf);
+int pmx_parser_next_texture(struct pmx_parse_state *state, char *buf,
+                            size_t bufsize);
+int pmx_parser_next_material(struct pmx_parse_state *state, pmx_material_t *material);

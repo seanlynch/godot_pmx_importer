@@ -133,7 +133,7 @@ RPARSER(vec3, float, float, 3);
 RPARSER(vec4, float, float, 4);
 
 IPARSER(bone_index, int_fast32_t, byte, short, int);
-IPARSER(vertex_index, int32_t, ubyte, ushort, uint);
+IPARSER(texture_index, int_fast32_t, byte, short, int);
 
 
 static size_t parse_text(pmx_parse_state_t *state, char *buf, size_t bufsize) {
@@ -286,6 +286,50 @@ TRIANGLE_PARSER(uint16);
 TRIANGLE_PARSER(int32);
 
 
+int pmx_parser_next_texture(pmx_parse_state_t *state, char *buf, size_t bufsize) {
+  int ret = setjmp(state->env);
+  if (ret != 0) return ret;
+
+  parse_text(state, buf, bufsize);
+  return 0;
+}
+
+
+int pmx_parser_next_material(pmx_parse_state_t *state, pmx_material_t *material) {
+  int ret = setjmp(state->env);
+  if (ret != 0) return ret;
+
+  PARSE_TEXT(material->name_local);
+  PARSE_TEXT(material->name_universal);
+  parse_vec4(state, material->diffuse);
+  parse_vec3(state, material->specular);
+  material->specularity = parse_float(state);
+  parse_vec3(state, material->ambient);
+  material->flags = parse_byte(state);
+  parse_vec4(state, material->edge_color);
+  material->edge_scale = parse_float(state);
+  material->texture = parse_texture_index(state);
+  material->environment = parse_texture_index(state);
+  material->environment_blend_mode = parse_byte(state);
+  material->toon_type = parse_byte(state);
+  switch (material->toon_type) {
+  case texture_ref:
+    material->toon = parse_texture_index(state);
+    break;
+  case internal_ref:
+    material->toon = parse_byte(state);
+    break;
+  default:
+    parse_error(state, -1, "Invalid toon reference type %d", material->toon_type);
+  }
+  PARSE_TEXT(material->metadata);
+  int_fast32_t index_count = parse_int(state);
+  if (index_count %3 != 0) parse_error(state, -1, "Index count %d is not a multiple of 3", index_count);
+  material->triangle_count = index_count / 3;
+  return 0;
+}
+
+
 #define CHECK_ISIZE(x) if (state->model.x != 1 && state->model.x != 2 && state->model.x != 4) parse_error(state, -1, "Invalid index size for " #x, state->model.x)
 
 
@@ -333,6 +377,7 @@ int pmx_parser_parse(const char *filename, const pmx_parser_callbacks_t *callbac
   ret = pmx_parser_parse_header(&state);
   if (ret != 0) return ret;
 
+  /* vertices */
   int_fast32_t count = parse_int(&state);
   ret = state.callbacks->vertex_cb(&state, count, state.userdata);
   if (ret != 0) return ret;
@@ -340,9 +385,26 @@ int pmx_parser_parse(const char *filename, const pmx_parser_callbacks_t *callbac
   ret = setjmp(state.env);
   if (ret != 0) return ret;
 
+  /* triangles */
   count = parse_int(&state);
   if (count % 3 != 0) parse_error(&state, -1, "Index count %ld is not a multiple of 3", count);
   ret = state.callbacks->triangle_cb(&state, count / 3, state.userdata);
+  if (ret != 0) return ret;
+
+  ret = setjmp(state.env);
+  if (ret != 0) return ret;
+
+  /* textures */
+  count = parse_int(&state);
+  ret = state.callbacks->texture_cb(&state, count, state.userdata);
+  if (ret != 0) return ret;
+
+  ret = setjmp(state.env);
+  if (ret != 0) return ret;
+
+  /* materials */
+  count = parse_int(&state);
+  ret = state.callbacks->material_cb(&state, count, state.userdata);
   if (ret != 0) return ret;
 
   ret = setjmp(state.env);
