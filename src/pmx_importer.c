@@ -367,7 +367,9 @@ static godot_variant pmx_parse(godot_object *obj, void *method_data, void *userd
                                       void *userdata_void, int num_args,       \
                                       godot_variant **args) {                  \
     pmx_importer_userdata_t *userdata = userdata_void;                         \
-    return userdata->name;                                                     \
+    godot_variant var;                                                         \
+    api->godot_variant_new_copy(&var, &userdata->name);                        \
+    return var;                                                                \
   }
 
 PMX_GETTER(model_name_local);
