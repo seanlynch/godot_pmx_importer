@@ -65,7 +65,7 @@ typedef struct {
   float edge_scale;
   int_fast32_t texture;
   int_fast32_t environment;
-  enum { disabled=0, multiplicative=2, additive=3, addl_vec4=4 } environment_blend_mode;
+  enum { disabled=0, multiplicative=1, additive=2, addl_vec4=3 } environment_blend_mode;
   enum { texture_ref=0, internal_ref=1 } toon_type;
   int_fast32_t toon;  /* Meaning depends on toon_type */
   char metadata[PMX_STRING_MAX];

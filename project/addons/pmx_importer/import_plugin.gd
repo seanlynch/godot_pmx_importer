@@ -45,6 +45,8 @@ func create_mesh(pmx) -> ArrayMesh:
 	# Create the Mesh.
 	print("Triangle count: ", pmx.get_triangles().size())
 	print("Vertex count: ", pmx.get_positions().size())
+	print("Normals count: ", pmx.get_normals().size())
+	print("UVs count: ", pmx.get_uvs().size())
 	arr_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return arr_mesh
 
