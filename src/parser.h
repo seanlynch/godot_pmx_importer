@@ -73,7 +73,7 @@ typedef struct {
   enum { texture_ref=0, internal_ref=1 } toon_type;
   int_fast32_t toon;  /* Meaning depends on toon_type */
   char metadata[PMX_STRING_MAX];
-  int_fast32_t triangle_count;  /* Number of triangles to apply this material to */
+  int_fast32_t index_count;  /* Number of indices (triangles * 3) to apply this material to */
 } pmx_material_t;
 
 struct pmx_parse_state;

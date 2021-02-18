@@ -325,7 +325,7 @@ int pmx_parser_next_material(pmx_parse_state_t *state, pmx_material_t *material)
   PARSE_TEXT(material->metadata);
   int_fast32_t index_count = parse_int(state);
   if (index_count %3 != 0) parse_error(state, -1, "Index count %d is not a multiple of 3", index_count);
-  material->triangle_count = index_count / 3;
+  material->index_count = index_count;
   return 0;
 }
 

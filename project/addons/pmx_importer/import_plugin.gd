@@ -57,12 +57,19 @@ func import(source_file, save_path, options, r_platform_variants, r_gen_files):
 		return err
 	var source_path: String = file.get_path_absolute()
 	file.close()
-	var pmx = load("res://pmx.gdns").new()
+	var pmx = load("res://PMX.gdns").new()
 	var ret = pmx.parse(source_path)
 	var scene := Node.new()
-	scene.name = pmx.name_universal if pmx.name_universal else pmx.name_local
+	scene.name = pmx.model_name_universal if pmx.model_name_universal else pmx.model_name_local
+	var mesh := ArrayMesh.new()
+	var arrays: Array = []
+	arrays.resize(ArrayMesh.ARRAY_MAX)
+	arrays[ArrayMesh.ARRAY_VERTEX] = pmx.posiitons
+	arrays[ArrayMesh.ARRAY_NORMAL] = pmx.normals
+	arrays[ArrayMesh.ARRAY_TEX_UV] = pmx.uvs
+	arrays[ArrayMesh.ARRAY_INDEX] = pmx.triangles
 	var mesh_instance := MeshInstance.new()
-	mesh_instance.mesh = pmx.mesh
+	mesh_instance.mesh = mesh
 	scene.add_child(mesh_instance)
 	mesh_instance.set_owner(scene)
 	var packed_scene := PackedScene.new()
