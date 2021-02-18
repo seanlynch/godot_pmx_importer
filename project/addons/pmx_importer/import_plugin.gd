@@ -57,23 +57,12 @@ func import(source_file, save_path, options, r_platform_variants, r_gen_files):
 		return err
 	var source_path: String = file.get_path_absolute()
 	file.close()
-	var pmx = preload("res://pmx.gdns").new()
+	var pmx = load("res://pmx.gdns").new()
 	var ret = pmx.parse(source_path)
 	var scene := Node.new()
-	var name_local = pmx.get_model_name_local()
-	print("Local name: ", name_local)
-	var name_universal = pmx.get_model_name_universal()
-	print("Universal name: ", name_universal)
-	var comment_local = pmx.get_comment_local()
-	print("Local comment: ", comment_local)
-	var comment_universal = pmx.get_comment_universal()
-	print("Universal comment: ", comment_universal)
-	var textures = pmx.get_textures()
-	print("Textures: ", textures)
-	scene.name = name_universal if name_universal else name_local
-	var mesh := self.create_mesh(pmx)
+	scene.name = pmx.name_universal if pmx.name_universal else pmx.name_local
 	var mesh_instance := MeshInstance.new()
-	mesh_instance.mesh = mesh
+	mesh_instance.mesh = pmx.mesh
 	scene.add_child(mesh_instance)
 	mesh_instance.set_owner(scene)
 	var packed_scene := PackedScene.new()

@@ -1,4 +1,8 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <setjmp.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -93,3 +97,7 @@ int pmx_parser_next_triangle_int32(struct pmx_parse_state *state, int32_t *buf);
 int pmx_parser_next_texture(struct pmx_parse_state *state, char *buf,
                             size_t bufsize);
 int pmx_parser_next_material(struct pmx_parse_state *state, pmx_material_t *material);
+
+#ifdef __cplusplus
+}
+#endif
