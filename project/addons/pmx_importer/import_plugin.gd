@@ -13,7 +13,7 @@ func get_recognized_extensions():
 	return ["pmx"]
 
 func get_save_extension():
-	return "tscn"
+	return "scn"
 
 func get_resource_type():
 	return "PackedScene"
@@ -46,25 +46,22 @@ func load_textures(source_dir: String, textures: PoolStringArray) -> Array:
 	var r := []
 	for t in textures:
 		var filename = "%s/%s" % [source_dir, t.replace("\\", "/")]
-		print("Loading texture ", filename)
 		var tex = load(filename)
-		print("Got resource ", tex)
 		r.push_back(tex)
 		
 	return r
 	
 func import(source_file: String, save_path: String, options, r_platform_variants, r_gen_files):
-	var path_components := Array(source_file.split("/"))
-	var source_dir := PoolStringArray(path_components.slice(0, path_components.size() - 2)).join("/")
+	var source_dir := source_file.rsplit("/", true, 1)[0]
 	print("source_dir: ", source_dir)
-	var file = File.new();
+	var file := File.new();
 	var err = file.open(source_file, File.READ)
 	if err != OK:
 		return err
-	var source_path: String = file.get_path_absolute()
-	file.close()
 	var pmx = load("res://PMX.gdns").new()
-	var ret = pmx.parse(source_path)
+	var data := file.get_buffer(file.get_len())
+	print("Data size: ", data.size())
+	var ret = pmx.parse(data)
 	var scene := Node.new()
 	scene.name = pmx.model_name_universal if pmx.model_name_universal else pmx.model_name_local
 	var mesh := ArrayMesh.new()
@@ -92,6 +89,6 @@ func import(source_file: String, save_path: String, options, r_platform_variants
 	mesh_instance.set_owner(scene)
 	var packed_scene := PackedScene.new()
 	packed_scene.pack(scene)
-	ret = ResourceSaver.save("%s.%s" % [save_path, get_save_extension()], packed_scene)
+	ret = ResourceSaver.save("%s.%s" % [save_path, get_save_extension()], packed_scene, ResourceSaver.FLAG_COMPRESS)
 	scene.free()
 	return ret

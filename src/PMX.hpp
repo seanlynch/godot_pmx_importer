@@ -32,7 +32,7 @@ namespace godot {
     int textureCB(struct pmx_parse_state *state, int_fast32_t count);
     int materialCB(struct pmx_parse_state *state, int_fast32_t count);
 
-    int parse(String filename);
+    int parse(PoolByteArray data);
 
   };
 }

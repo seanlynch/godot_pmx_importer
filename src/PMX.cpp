@@ -174,7 +174,7 @@ extern "C" int pmx_importer_material_cb(struct pmx_parse_state *state, int_fast3
   return static_cast<PMX *>(userdata)->materialCB(state, count);
 }
 
-int PMX::parse(String filename) {
+int PMX::parse(PoolByteArray data) {
   const pmx_parser_callbacks_t parser_callbacks =
     {
      .model_info_cb = pmx_importer_model_info_cb,
@@ -184,7 +184,7 @@ int PMX::parse(String filename) {
      .material_cb = pmx_importer_material_cb
     };
 
-  return pmx_parser_parse(filename.utf8().get_data(), &parser_callbacks, static_cast<void *>(this));
+  return pmx_parser_parse(data.read().ptr(), data.size(), &parser_callbacks, static_cast<void *>(this));
 }
 
 void PMX::_init() {

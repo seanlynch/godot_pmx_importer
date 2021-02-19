@@ -16,10 +16,9 @@
 
 
 typedef struct pmx_parse_state {
-  char data[4096];
+  const uint8_t *data;
   size_t offset;
   size_t size;
-  int fd;
   const pmx_parser_callbacks_t *callbacks;
   pmx_model_info_t model;
   void *userdata;
@@ -38,48 +37,32 @@ static void parse_error(pmx_parse_state_t *state, int result, char *fmt, ...) {
 }
 
 
-static void pmx_state_init(pmx_parse_state_t *state, const pmx_parser_callbacks_t *callbacks, void *userdata) {
+static void pmx_state_init(pmx_parse_state_t *state, const uint8_t *data, size_t size, const pmx_parser_callbacks_t *callbacks, void *userdata) {
   bzero(state, sizeof *state);
+  state->data = data;
+  state->size = size;
   state->callbacks = callbacks;
   state->userdata = userdata;
 }
 
 
-static void fill_buffer(pmx_parse_state_t *state) {
-  if (state->offset != state->size) {
-    assert(state->offset < state->size);
-    state->size -= state->offset;
-    memmove(state->data, &state->data[state->offset], state->size);
-  } else {
-    state->size = 0;
-  }
-  state->offset = 0;
-  ssize_t bytes_read = read(state->fd, &state->data[state->size], sizeof (state->data) - state->size);
-  if (bytes_read <= 0) {
-    parse_error(state, -1, "Failed to read any more bytes");
-  }
-  state->size += bytes_read;
-  assert(state->size <= sizeof (state->data));
-}
-
-
 static void check_size(pmx_parse_state_t *state, size_t needed) {
   if (state->offset + needed > state->size) {
-    fill_buffer(state);
+    parse_error(state, -1, "Not enough data. Needed %zd, got %zd", needed, state->size - state->offset);
   }
 }
 
 
-static char *parse_bytes(pmx_parse_state_t *state, size_t length) {
+static const uint8_t *parse_bytes(pmx_parse_state_t *state, size_t length) {
   check_size(state, length);
-  char *ptr = &state->data[state->offset];
+  const uint8_t *ptr = &state->data[state->offset];
   state->offset += length;
   return ptr;
 }
 
 
 static void copy_bytes(pmx_parse_state_t *state, char *dest, size_t length) {
-  char *src = parse_bytes(state, length);
+  const uint8_t *src = parse_bytes(state, length);
   memcpy(dest, src, length);
 }
 
@@ -366,14 +349,13 @@ static int pmx_parser_parse_header(pmx_parse_state_t *state) {
 }
 
 
-int pmx_parser_parse(const char *filename, const pmx_parser_callbacks_t *callbacks, void *userdata) {
+int pmx_parser_parse(const uint8_t *data, size_t size, const pmx_parser_callbacks_t *callbacks, void *userdata) {
   pmx_parse_state_t state;
   char text[128];
-  pmx_state_init(&state, callbacks, userdata);
+  pmx_state_init(&state, data, size, callbacks, userdata);
   int ret = setjmp(state.env);
   if (ret != 0) return ret;
 
-  state.fd = open(filename, 0, O_RDONLY);
   ret = pmx_parser_parse_header(&state);
   if (ret != 0) return ret;
 

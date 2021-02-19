@@ -88,7 +88,7 @@ typedef struct {
 
 const char *pmx_deform_type_string(pmx_deform_type_t t);
 
-int pmx_parser_parse(const char *filename,
+int pmx_parser_parse(const uint8_t *data, size_t size,
                      const pmx_parser_callbacks_t *callbacks, void *userdata);
 int pmx_parser_next_vertex(struct pmx_parse_state *state, pmx_vertex_t *vertex);
 int pmx_parser_next_triangle_uint8(struct pmx_parse_state *state, uint8_t *buf);
