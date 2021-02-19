@@ -1,7 +1,6 @@
 #include <Ref.hpp>
 
 #include "PMX.hpp"
-#include "PMXMaterial.hpp"
 
 using namespace godot;
 
@@ -119,16 +118,35 @@ int PMX::textureCB(struct pmx_parse_state *state, int_fast32_t count) {
 int PMX::materialCB(struct pmx_parse_state *state, int_fast32_t count) {
   int ret = 0;
   const char *str;
-  int_fast32_t j = 0;
+  godot_int j, k = 0;
+  pmx_material_t m;
 
   printf("Got %ld materials\n", count);
   for (int i = 0; i < count; i++) {
-    std::cerr << "Material " << i << std::endl;
-    Ref<PMXMaterial> material;
-    material.instance();
-    ret = material->parse(state);
+    ret = pmx_parser_next_material(state, &m);
     if (ret != 0) break;
-    materials.push_back(material);
+    PoolIntArray slice;
+    slice.resize(m.index_count);
+    for (j = 0; j < m.index_count; j++) {
+      slice.set(j, triangles[k++]);
+    }
+
+    materials.push_back(Dictionary::make("name_local", m.name_local,
+					 "name_universal", m.name_universal,
+					 "diffuse", Color(m.diffuse[0], m.diffuse[1], m.diffuse[2], m.diffuse[3]),
+					 "specular", Color(m.specular[0], m.specular[1], m.specular[2]),
+					 "specularity", m.specularity,
+					 "edge_color", Color(m.edge_color[0], m.edge_color[1], m.edge_color[2], m.edge_color[3]),
+					 "texture", m.texture,
+					 "environment", m.environment,
+
+					 "environment_blend_mode", str,
+					 "toon_internal", m.toon_type == m.internal_ref,
+					 "toon", m.toon,
+					 "metadata", m.metadata,
+					 "index_count", m.index_count,
+					 "indices", slice
+					 ));
   }
 
   return ret;
@@ -184,6 +202,7 @@ void PMX::_register_methods() {
   register_property<PMX, PoolVector3Array>("normals", &PMX::normals, {});
   register_property<PMX, PoolVector2Array>("uvs", &PMX::uvs, {});
   register_property<PMX, PoolIntArray>("triangles", &PMX::triangles, {});
+  register_property<PMX, PoolStringArray>("textures", &PMX::textures, {});
   register_property<PMX, Array>("materials", &PMX::materials, {});
 }
 
@@ -199,5 +218,4 @@ extern "C" void GDN_EXPORT godot_nativescript_init(void *handle) {
     godot::Godot::nativescript_init(handle);
 
     godot::register_class<godot::PMX>();
-    godot::register_class<godot::PMXMaterial>();
 }

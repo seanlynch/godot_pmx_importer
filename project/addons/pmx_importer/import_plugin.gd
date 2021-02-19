@@ -33,24 +33,30 @@ func get_import_options(preset):
 		_:
 			return []
 			
-func create_mesh(pmx) -> ArrayMesh:
-	# Initialize the ArrayMesh.
-	var arr_mesh = ArrayMesh.new()
-	var arrays = []
-	arrays.resize(ArrayMesh.ARRAY_MAX)
-	arrays[ArrayMesh.ARRAY_VERTEX] = pmx.get_positions()
-	arrays[ArrayMesh.ARRAY_NORMAL] = pmx.get_normals()
-	arrays[ArrayMesh.ARRAY_TEX_UV] = pmx.get_uvs()
-	arrays[ArrayMesh.ARRAY_INDEX] = pmx.get_triangles()
-	# Create the Mesh.
-	print("Triangle count: ", pmx.get_triangles().size())
-	print("Vertex count: ", pmx.get_positions().size())
-	print("Normals count: ", pmx.get_normals().size())
-	print("UVs count: ", pmx.get_uvs().size())
-	arr_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	return arr_mesh
-
-func import(source_file, save_path, options, r_platform_variants, r_gen_files):
+func make_material(m: Dictionary, textures: Array) -> SpatialMaterial:
+	var material := SpatialMaterial.new()
+	material.resource_name = m.name_universal if m.name_universal else m.name_local
+	material.albedo_color = m.diffuse
+	if m.texture >= 0:
+		material.albedo_texture = textures[m.texture]
+		
+	return material
+	
+func load_textures(source_dir: String, textures: PoolStringArray) -> Array:
+	var r := []
+	for t in textures:
+		var filename = "%s/%s" % [source_dir, t.replace("\\", "/")]
+		print("Loading texture ", filename)
+		var tex = load(filename)
+		print("Got resource ", tex)
+		r.push_back(tex)
+		
+	return r
+	
+func import(source_file: String, save_path: String, options, r_platform_variants, r_gen_files):
+	var path_components := Array(source_file.split("/"))
+	var source_dir := PoolStringArray(path_components.slice(0, path_components.size() - 2)).join("/")
+	print("source_dir: ", source_dir)
 	var file = File.new();
 	var err = file.open(source_file, File.READ)
 	if err != OK:
@@ -64,10 +70,22 @@ func import(source_file, save_path, options, r_platform_variants, r_gen_files):
 	var mesh := ArrayMesh.new()
 	var arrays: Array = []
 	arrays.resize(ArrayMesh.ARRAY_MAX)
-	arrays[ArrayMesh.ARRAY_VERTEX] = pmx.posiitons
+	print('Got ', pmx.positions.size(), " positions")
+	arrays[ArrayMesh.ARRAY_VERTEX] = pmx.positions
 	arrays[ArrayMesh.ARRAY_NORMAL] = pmx.normals
 	arrays[ArrayMesh.ARRAY_TEX_UV] = pmx.uvs
-	arrays[ArrayMesh.ARRAY_INDEX] = pmx.triangles
+	var triangles: PoolIntArray = pmx.triangles
+	var textures := load_textures(source_dir, pmx.textures)
+	var start := 0
+	for m in pmx.materials:
+		var name = m.name_universal if m.name_universal else m.name_local
+		print("Material: ", name)
+		arrays[ArrayMesh.ARRAY_INDEX] = m.indices
+		var surf_idx = mesh.get_surface_count() 
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		mesh.surface_set_name(surf_idx, name)
+		mesh.surface_set_material(surf_idx, make_material(m, textures))
+
 	var mesh_instance := MeshInstance.new()
 	mesh_instance.mesh = mesh
 	scene.add_child(mesh_instance)
