@@ -1,6 +1,8 @@
 tool
 extends EditorImportPlugin
 
+var shader: Shader = preload("toon.shader")
+
 enum Presets { DEFAULT }
 
 func get_importer_name():
@@ -33,13 +35,16 @@ func get_import_options(preset):
 		_:
 			return []
 			
-func make_material(m: Dictionary, textures: Array) -> SpatialMaterial:
-	var material := SpatialMaterial.new()
+func make_material(m: Dictionary, textures: Array) -> ShaderMaterial:
+	var material := ShaderMaterial.new()
 	material.resource_name = m.name_universal if m.name_universal else m.name_local
-	material.albedo_color = m.diffuse
+	material.shader = shader
+	material.set_shader_param("albedo", m.diffuse)
 	if m.texture >= 0:
-		material.albedo_texture = textures[m.texture]
-		
+		material.set_shader_param("albedo_texture", textures[m.texture])
+	material.set_shader_param("specular_shininess", m.specularity)
+	material.set_shader_param("rim_width", m.edge_scale)
+	material.set_shader_param("rim_color", m.edge_color)
 	return material
 	
 func load_textures(source_dir: String, textures: PoolStringArray) -> Array:

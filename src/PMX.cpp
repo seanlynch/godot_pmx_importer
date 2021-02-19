@@ -137,6 +137,7 @@ int PMX::materialCB(struct pmx_parse_state *state, int_fast32_t count) {
 					 "specular", Color(m.specular[0], m.specular[1], m.specular[2]),
 					 "specularity", m.specularity,
 					 "edge_color", Color(m.edge_color[0], m.edge_color[1], m.edge_color[2], m.edge_color[3]),
+					 "edge_scale", m.edge_scale,
 					 "texture", m.texture,
 					 "environment", m.environment,
 
