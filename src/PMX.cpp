@@ -1,8 +1,9 @@
-#include <Ref.hpp>
-
 #include "PMX.hpp"
 
 using namespace godot;
+
+static inline Vector2 vec2(const float v[2]) { return Vector2(v[0], v[1]); }
+static inline Vector3 vec3(const float v[3]) { return Vector3(v[0], v[1], v[2]); }
 
 int PMX::modelInfoCB(pmx_model_info_t *model) {
   model_name_local = model->model_name_local;
@@ -13,49 +14,73 @@ int PMX::modelInfoCB(pmx_model_info_t *model) {
 }
 
 int PMX::parseBoneWeights(const pmx_vertex_t &vertex, uint_fast32_t i) {
-  godot_int index = i * 4;
-  const int_fast32_t (&vbones)[4] = vertex.deform.non_sdef.bones;
-  const float (&vweights)[4] = vertex.deform.non_sdef.weights;
+  int b0 = vertex.bones[0];
+  int b1 = vertex.bones[1];
+  int b2 = vertex.bones[2];
+  int b3 = vertex.bones[3];
+  float w0 = vertex.bones[0];
+  float w1 = vertex.bones[1];
+  float w2 = vertex.bones[2];
+  float w3 = vertex.bones[3];
   float renorm;
+
+  if (b0 < 0) {
+    b0 = 0;
+    w0 = 0.0;
+  };
+
+  if (b1 < 0) {
+    b1 = 0;
+    w1 = 0.0;
+  }
+
+  if (b2 < 0) {
+    b2 = 0;
+    w2 = 0.0;
+  }
+
+  if (b3 < 0) {
+    b3 = 0;
+    w3 = 0.0;
+  }
 
   switch (vertex.deform_type) {
   case bdef1:
-    bones.set(index, vbones[0]);
-    weights.set(index++, 1.0);
-    bones.set(index, -1);
-    weights.set(index++, 0.0);
-    bones.set(index, -1);
-    weights.set(index++, 0.0);
-    bones.set(index, -1);
-    weights.set(index, 0.0);
-    break;
   case bdef2:
-    bones.set(index, vbones[0]);
-    weights.set(index++, vweights[0]);
-    bones.set(index, vbones[1]);
-    weights.set(index++, 1.0 - vweights[0]);
-    bones.set(index, -1);
-    weights.set(index++, 0.0);
-    bones.set(index, -1);
-    weights.set(index, 0.0);
     break;
   case bdef4:
     /* Make the weights sum to 1 by renormalizing */
-    renorm = 1.0 / (vweights[0] + vweights[1] + vweights[2] + vweights[3]);
-    bones.set(index, vbones[0]);
-    weights.set(index++, vweights[0] * renorm);
-    bones.set(index, vbones[1]);
-    weights.set(index++, vweights[1] * renorm);
-    bones.set(index, bones[2]);
-    weights.set(index++, vweights[2] * renorm);
-    bones.set(index, bones[3]);
-    weights.set(index, vweights[3] * renorm);
+    renorm = w0 + w1 + w2 + w3;
+    if (renorm != 0.0 && renorm != 1.0) {
+      w0 /= renorm;
+      w1 /= renorm;
+      w2 /= renorm;
+      w3 /= renorm;
+    }
+    break;
+  case sdef:
+    sdef_vertices.push_back(i);
+    sdef_data.push_back(vec3(vertex.c));
+    sdef_data.push_back(vec3(vertex.r0));
+    sdef_data.push_back(vec3(vertex.r1));
     break;
   case qdef:
-  case sdef:
     std::cerr << "Unhandled " << pmx_deform_type_string(vertex.deform_type) << " weights" << std::endl;
     break;
   }
+
+  godot_int index = i * 4;
+  bone_indices.set(index, b0);
+  bone_weights.set(index, w0);
+  index++;
+  bone_indices.set(index, b1);
+  bone_weights.set(index, w1);
+  index++;
+  bone_indices.set(index, b2);
+  bone_weights.set(index, w2);
+  index++;
+  bone_indices.set(index, b3);
+  bone_weights.set(index, w3);
   return 0;
 }
 
@@ -67,14 +92,14 @@ int PMX::vertexCB(struct pmx_parse_state *state, int_fast32_t vertex_count) {
   positions.resize(vertex_count);
   normals.resize(vertex_count);
   uvs.resize(vertex_count);
-  bones.resize(vertex_count * 4);
-  weights.resize(vertex_count * 4);
+  bone_indices.resize(vertex_count * 4);
+  bone_weights.resize(vertex_count * 4);
 
   for (int i = 0; i < vertex_count; i++) {
     ret = pmx_parser_next_vertex(state, &vertex);
     if (ret != 0) break;
-    positions.set(i, Vector3(vertex.position[0], vertex.position[1], vertex.position[2]));
-    normals.set(i, Vector3(vertex.normal[0], vertex.normal[1], vertex.normal[2]));
+    positions.set(i, vec3(vertex.position));
+    normals.set(i, vec3(vertex.normal));
     uvs.set(i, Vector2(vertex.uv[0], vertex.uv[1]));
     parseBoneWeights(vertex, i);
   }
@@ -117,7 +142,6 @@ int PMX::textureCB(struct pmx_parse_state *state, int_fast32_t count) {
 
 int PMX::materialCB(struct pmx_parse_state *state, int_fast32_t count) {
   int ret = 0;
-  const char *str;
   godot_int j, k = 0;
   pmx_material_t m;
 
@@ -131,6 +155,7 @@ int PMX::materialCB(struct pmx_parse_state *state, int_fast32_t count) {
       slice.set(j, triangles[k++]);
     }
 
+    printf("Material \"%s\" (\"%s\")\n", m.name_local, m.name_universal);
     materials.push_back(Dictionary::make("name_local", m.name_local,
 					 "name_universal", m.name_universal,
 					 "diffuse", Color(m.diffuse[0], m.diffuse[1], m.diffuse[2], m.diffuse[3]),
@@ -140,16 +165,70 @@ int PMX::materialCB(struct pmx_parse_state *state, int_fast32_t count) {
 					 "edge_scale", m.edge_scale,
 					 "texture", m.texture,
 					 "environment", m.environment,
-
-					 "environment_blend_mode", str,
+					 "environment_blend_mode", m.environment_blend_mode,
 					 "toon_internal", m.toon_type == m.internal_ref,
 					 "toon", m.toon,
 					 "metadata", m.metadata,
 					 "index_count", m.index_count,
 					 "indices", slice
 					 ));
+    printf("Done\n");
   }
 
+  return ret;
+}
+
+static Dictionary parse_bone_ik(const pmx_bone_t &b) {
+  auto ik = Dictionary::make("target", b.ik.target,
+			     "loop_count", b.ik.loop_count,
+			     "limit_radian", b.ik.limit_radian);
+  Array links;
+  links.resize(b.ik.link_count);
+  for (int i = 0; i < b.ik.link_count; i++) {
+    auto &link = b.ik.ik_links[i];
+    auto link_dict = Dictionary::make("bone", link.bone,
+				      "has_limits", link.has_limits);
+    if (link.has_limits) {
+      Array limits;
+      limits.resize(2);
+      limits[0] = vec3(link.limit_min);
+      limits[1] = vec3(link.limit_max);
+      link_dict["limits"] = limits;
+    }
+    links[i] = link_dict;
+  }
+  return ik;
+}
+
+int PMX::boneCB(struct pmx_parse_state *state, int_fast32_t count) {
+  int ret = 0;
+  pmx_bone_t b;
+
+  printf("Got %ld bones\n", count);
+  for (int i = 0; i < count; i++) {
+    ret = pmx_parser_next_bone(state, &b);
+    if (ret != 0) break;
+    auto dict = Dictionary::make("name_local", b.name_local,
+				 "name_universal", b.name_universal,
+				 "position", vec3(b.position),
+				 "parent", b.parent,
+				 "layer", b.layer,
+				 "flags", b.flags);
+    if (b.flags & PMX_BONE_FLAG_INDEXED_TAIL_POS) dict["tail_bone"] = b.tail_bone;
+    else dict["tail_position"] = vec3(b.tail_position);
+    if (b.flags & (PMX_BONE_FLAG_INHERIT_ROTATION | PMX_BONE_FLAG_INHERIT_TRANSLATION)) {
+      dict["inherit"] = Dictionary::make("parent", b.inherit.parent,
+					 "weight", b.inherit.weight);
+    }
+    if (b.flags & PMX_BONE_FLAG_FIXED_AXIS) dict["fixed_axis"] = vec3(b.fixed_axis);
+    if (b.flags & PMX_BONE_FLAG_LOCAL_COORD) {
+      dict["local_coord"] = Dictionary::make("x_axis", vec3(b.local_coord.x_axis),
+					     "z_axis", vec3(b.local_coord.z_axis));
+    }
+    if (b.flags & PMX_BONE_FLAG_EXTERNAL_PARENT_DEFORM) dict["external_parent"] = b.external_parent;
+    if (b.flags & PMX_BONE_FLAG_IK) dict["ik"] = parse_bone_ik(b);
+    bones.push_back(dict);
+  }
   return ret;
 }
 
@@ -170,19 +249,23 @@ extern "C" int pmx_importer_texture_cb(struct pmx_parse_state *state, int_fast32
   return static_cast<PMX *>(userdata)->textureCB(state, count);
 }
 
-
 extern "C" int pmx_importer_material_cb(struct pmx_parse_state *state, int_fast32_t count, void *userdata) {
   return static_cast<PMX *>(userdata)->materialCB(state, count);
 }
 
+extern "C" int pmx_importer_bone_cb(struct pmx_parse_state *state, int_fast32_t count, void *userdata) {
+  return static_cast<PMX *>(userdata)->boneCB(state, count);
+}
+
 int PMX::parse(PoolByteArray data) {
-  const pmx_parser_callbacks_t parser_callbacks =
+  static const pmx_parser_callbacks_t parser_callbacks =
     {
      .model_info_cb = pmx_importer_model_info_cb,
      .vertex_cb = pmx_importer_vertex_cb,
      .triangle_cb = pmx_importer_triangle_cb,
      .texture_cb = pmx_importer_texture_cb,
-     .material_cb = pmx_importer_material_cb
+     .material_cb = pmx_importer_material_cb,
+     .bone_cb = pmx_importer_bone_cb
     };
 
   return pmx_parser_parse(data.read().ptr(), data.size(), &parser_callbacks, static_cast<void *>(this));
@@ -190,7 +273,6 @@ int PMX::parse(PoolByteArray data) {
 
 void PMX::_init() {
 }
-
 
 void PMX::_register_methods() {
   std::cerr << "PMX::_register_methods()" << std::endl;
@@ -202,9 +284,14 @@ void PMX::_register_methods() {
   register_property<PMX, PoolVector3Array>("positions", &PMX::positions, {});
   register_property<PMX, PoolVector3Array>("normals", &PMX::normals, {});
   register_property<PMX, PoolVector2Array>("uvs", &PMX::uvs, {});
+  register_property<PMX, PoolIntArray>("bone_indices", &PMX::bone_indices, {});
+  register_property<PMX, PoolRealArray>("bone_weights", &PMX::bone_weights, {});
+  register_property<PMX, PoolIntArray>("sdef_vertices", &PMX::bone_indices, {});
+  register_property<PMX, PoolVector3Array>("sdef_data", &PMX::sdef_data, {});
   register_property<PMX, PoolIntArray>("triangles", &PMX::triangles, {});
   register_property<PMX, PoolStringArray>("textures", &PMX::textures, {});
   register_property<PMX, Array>("materials", &PMX::materials, {});
+  register_property<PMX, Array>("bones", &PMX::bones, {});
 }
 
 extern "C" void GDN_EXPORT godot_gdnative_init(godot_gdnative_init_options *o) {

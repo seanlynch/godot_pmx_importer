@@ -191,31 +191,48 @@ int pmx_parser_next_vertex(pmx_parse_state_t *state, pmx_vertex_t *vertex) {
   vertex->deform_type = parse_byte(state);
   switch(vertex->deform_type) {
   case bdef1:
-    vertex->deform.non_sdef.bones[0] = parse_bone_index(state);
+    vertex->bones[0] = parse_bone_index(state);
+    vertex->bones[1] = 0;
+    vertex->bones[2] = 0;
+    vertex->bones[3] = 0;
+    vertex->weights[0] = 1.0;
+    vertex->weights[1] = 0.0;
+    vertex->weights[2] = 0.0;
+    vertex->weights[3] = 0.0;
     break;
   case bdef2:
-    vertex->deform.non_sdef.bones[0] = parse_bone_index(state);
-    vertex->deform.non_sdef.bones[1] = parse_bone_index(state);
-    vertex->deform.non_sdef.weights[0] = parse_float(state);
+    vertex->bones[0] = parse_bone_index(state);
+    vertex->bones[1] = parse_bone_index(state);
+    vertex->bones[2] = 0;
+    vertex->bones[3] = 0;
+    vertex->weights[0] = parse_float(state);
+    vertex->weights[1] = 0.0;
+    vertex->weights[2] = 0.0;
+    vertex->weights[3] = 0.0;
     break;
   case bdef4:
   case qdef:
-    vertex->deform.non_sdef.bones[0] = parse_bone_index(state);
-    vertex->deform.non_sdef.bones[1] = parse_bone_index(state);
-    vertex->deform.non_sdef.bones[2] = parse_bone_index(state);
-    vertex->deform.non_sdef.bones[3] = parse_bone_index(state);
-    vertex->deform.non_sdef.weights[0] = parse_float(state);
-    vertex->deform.non_sdef.weights[1] = parse_float(state);
-    vertex->deform.non_sdef.weights[2] = parse_float(state);
-    vertex->deform.non_sdef.weights[3] = parse_float(state);
+    vertex->bones[0] = parse_bone_index(state);
+    vertex->bones[1] = parse_bone_index(state);
+    vertex->bones[2] = parse_bone_index(state);
+    vertex->bones[3] = parse_bone_index(state);
+    vertex->weights[0] = parse_float(state);
+    vertex->weights[1] = parse_float(state);
+    vertex->weights[2] = parse_float(state);
+    vertex->weights[3] = parse_float(state);
     break;
   case sdef:
-    vertex->deform.sdef.bones[0] = parse_bone_index(state);
-    vertex->deform.sdef.bones[1] = parse_bone_index(state);
-    vertex->deform.sdef.weight = parse_float(state);
-    parse_vec3(state, vertex->deform.sdef.c);
-    parse_vec3(state, vertex->deform.sdef.r0);
-    parse_vec3(state, vertex->deform.sdef.r1);
+    vertex->bones[0] = parse_bone_index(state);
+    vertex->bones[1] = parse_bone_index(state);
+    vertex->bones[2] = 0;
+    vertex->bones[3] = 0;
+    vertex->weights[0] = parse_float(state);
+    vertex->weights[1] = 1.0 - vertex->weights[0];
+    vertex->weights[2] = 0.0;
+    vertex->weights[3] = 0.0;
+    parse_vec3(state, vertex->c);
+    parse_vec3(state, vertex->r0);
+    parse_vec3(state, vertex->r1);
     break;
   }
   vertex->outline_scale = parse_float(state);
@@ -312,6 +329,81 @@ int pmx_parser_next_material(pmx_parse_state_t *state, pmx_material_t *material)
   return 0;
 }
 
+static void parse_ik_link(pmx_parse_state_t *state, pmx_bone_ik_link_t *link) {
+  link->bone = parse_bone_index(state);
+  link->has_limits = parse_byte(state) == 1;
+  if (link->has_limits) {
+    parse_vec3(state, link->limit_min);
+    parse_vec3(state, link->limit_max);
+  }
+}
+int pmx_parser_next_bone(pmx_parse_state_t *state, pmx_bone_t *bone) {
+  int ret = setjmp(state->env);
+  if (ret != 0) return ret;
+
+  PARSE_TEXT(bone->name_local);
+  PARSE_TEXT(bone->name_universal);
+  parse_vec3(state, bone->position);
+  bone->parent = parse_bone_index(state);
+  bone->layer = parse_int(state);
+  bone->flags = parse_ushort(state);
+
+  if (bone->flags & PMX_BONE_FLAG_INDEXED_TAIL_POS) {
+    bone->tail_bone = parse_bone_index(state);
+  } else {
+    bone->tail_bone = -1;
+    parse_vec3(state, bone->tail_position);
+  }
+
+  if (bone->flags & (PMX_BONE_FLAG_INHERIT_ROTATION | PMX_BONE_FLAG_INHERIT_TRANSLATION)) {
+    bone->inherit.parent = parse_bone_index(state);
+    bone->inherit.weight = parse_float(state);
+  } else {
+    bone->inherit.parent = -1;
+  }
+
+  if (bone->flags & PMX_BONE_FLAG_FIXED_AXIS) parse_vec3(state, bone->fixed_axis);
+  if (bone->flags & PMX_BONE_FLAG_LOCAL_COORD) {
+    parse_vec3(state, bone->local_coord.x_axis);
+    parse_vec3(state, bone->local_coord.z_axis);
+  }
+
+  if (bone->flags & PMX_BONE_FLAG_EXTERNAL_PARENT_DEFORM) {
+    bone->external_parent = parse_bone_index(state);
+  } else {
+    bone->external_parent = -1;
+  }
+
+  if (bone->flags & PMX_BONE_FLAG_IK) {
+    bone->ik.target = parse_bone_index(state);
+    bone->ik.loop_count = parse_int(state);
+    bone->ik.limit_radian = parse_float(state);
+    int_fast32_t link_count = parse_int(state);
+
+    if (link_count > 0) {
+      if (link_count <= PMX_MAX_IK_LINKS) {
+	bone->ik.link_count = link_count;
+      } else {
+	fprintf(stderr, "IK link count %ld is greater than PMX_MAX_IK_LINKS\n", link_count);
+	bone->ik.link_count = PMX_MAX_IK_LINKS;
+      }
+
+      for (int i = 0; i < bone->ik.link_count; i++) {
+	parse_ik_link(state, &bone->ik.ik_links[i]);
+      }
+
+      /* Parse any links above the limit */
+      for (int i = bone->ik.link_count; i < link_count; i++) {
+	pmx_bone_ik_link_t dummy;
+	parse_ik_link(state, &dummy);
+      }
+    } else {
+      bone->ik.link_count = 0;
+    }
+  }
+  return 0;
+}
+
 
 #define CHECK_ISIZE(x) if (state->model.x != 1 && state->model.x != 2 && state->model.x != 4) parse_error(state, -1, "Invalid index size for " #x, state->model.x)
 
@@ -391,5 +483,11 @@ int pmx_parser_parse(const uint8_t *data, size_t size, const pmx_parser_callback
 
   ret = setjmp(state.env);
   if (ret != 0) return ret;
+
+  /* bones */
+  count = parse_int(&state);
+  ret = state.callbacks->bone_cb(&state, count, state.userdata);
+  if (ret != 0) return ret;
+
   return 0;
 }

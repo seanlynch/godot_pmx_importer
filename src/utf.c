@@ -52,19 +52,16 @@ static ssize_t utf8_write(int_fast32_t codepoint, char *buf, size_t offset, size
     *(uint8_t *)&buf[offset] = codepoint;
     break;
   case 2:
-    codepoint -= 0x80;
     *(uint8_t *)&buf[offset++] = 0xc0 | codepoint >> 6;
     *(uint8_t *)&buf[offset] = 0x80 | (codepoint & 0x3f);
     break;
   case 3:
     if (offset + 2 >= bufsize) return 0;
-    codepoint -= 0x800;
     *(uint8_t *)&buf[offset++] = 0xe0 | codepoint >> 12;
     *(uint8_t *)&buf[offset++] = 0x80 | ((codepoint >> 6) & 0x3f);
     *(uint8_t *)&buf[offset] = 0x80 | (codepoint & 0x3f);
     break;
   case 4:
-    codepoint -= 0x10000;
     *(uint8_t *)&buf[offset++] = 0xf0 | codepoint >> 18;
     *(uint8_t *)&buf[offset++] = 0x80 | ((codepoint >> 12) & 0x3f);
     *(uint8_t *)&buf[offset++] = 0x80 | ((codepoint >> 6) & 0x3f);
@@ -80,10 +77,10 @@ ssize_t utf16le_to_utf8(const uint8_t *data, size_t size, char *buf, size_t bufs
   for (offset = 0, i = 0; offset < size; ) {
     int_fast32_t codepoint = decode_utf16le(data, &offset, size);
     ssize_t written = utf8_write(codepoint, buf, i, bufsize);
-    if (written == -1) return -1;
+    if (written == -1) break;
     i += written;
   }
-  if (i >= bufsize) return 0;
+  if (i >= bufsize) i = bufsize - 1;
   buf[i++] = '\0';
   return i;
 }

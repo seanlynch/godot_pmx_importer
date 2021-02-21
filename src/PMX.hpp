@@ -15,11 +15,14 @@ namespace godot {
     PoolVector3Array positions;
     PoolVector3Array normals;
     PoolVector2Array uvs;
-    PoolIntArray bones;
-    PoolRealArray weights;
+    PoolIntArray bone_indices;
+    PoolRealArray bone_weights;
+    PoolIntArray sdef_vertices;
+    PoolVector3Array sdef_data;
     PoolIntArray triangles;
     PoolStringArray textures;
     Array materials;
+    Array bones;
 
     int parseBoneWeights(const pmx_vertex_t &vertex, uint_fast32_t i);
   public:
@@ -31,6 +34,7 @@ namespace godot {
     int triangleCB(struct pmx_parse_state *state, int_fast32_t count);
     int textureCB(struct pmx_parse_state *state, int_fast32_t count);
     int materialCB(struct pmx_parse_state *state, int_fast32_t count);
+    int boneCB(struct pmx_parse_state *state, int_fast32_t count);
 
     int parse(PoolByteArray data);
 
