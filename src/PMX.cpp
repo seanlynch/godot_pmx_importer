@@ -1,3 +1,5 @@
+#include <array>
+
 #include "PMX.hpp"
 
 using namespace godot;
@@ -84,24 +86,14 @@ int PMX::parseBoneWeights(const pmx_vertex_t &vertex, uint_fast32_t i) {
   return 0;
 }
 
-int PMX::vertexCB(struct pmx_parse_state *state, int_fast32_t vertex_count) {
+int PMX::vertexCB(struct pmx_parse_state *state, int_fast32_t count) {
   pmx_vertex_t vertex;
   int ret = 0;
 
-  /* Reserve space for the vertex data */
-  positions.resize(vertex_count);
-  normals.resize(vertex_count);
-  uvs.resize(vertex_count);
-  bone_indices.resize(vertex_count * 4);
-  bone_weights.resize(vertex_count * 4);
-
-  for (int i = 0; i < vertex_count; i++) {
+  vertices.resize(count);
+  for (auto& it : vertices) {
     ret = pmx_parser_next_vertex(state, &vertex);
     if (ret != 0) break;
-    positions.set(i, vec3(vertex.position));
-    normals.set(i, vec3(vertex.normal));
-    uvs.set(i, Vector2(vertex.uv[0], vertex.uv[1]));
-    parseBoneWeights(vertex, i);
   }
 
   return ret;
@@ -117,10 +109,9 @@ int PMX::triangleCB(struct pmx_parse_state *state, int_fast32_t count) {
     ret = pmx_parser_next_triangle_int32(state, triangle);
     if (ret != 0) break;
 
-    /* Reverse the winding direction */
-    triangles.set(j++, triangle[2]);
-    triangles.set(j++, triangle[1]);
-    triangles.set(j++, triangle[0]);
+    triangles[j++] = triangle[0];
+    triangles[j++] = triangle[1];
+    triangles[j++] = triangle[2];
   }
 
   return ret;
@@ -140,6 +131,21 @@ int PMX::textureCB(struct pmx_parse_state *state, int_fast32_t count) {
   return ret;
 }
 
+Dictionary PMX::getSurfaceArrays(int_fast32_t start, int_fast32_t count) {
+  PoolVector3Array positions, normals;
+  PoolVector2Array uvs;
+  PoolIntArray bones;
+  PoolRealArray weights;
+
+  positions.resize(count);
+  normals.resize(count);
+  uvs.resize(count);
+
+  
+  for (const auto& it : indices) {
+  }
+}
+
 int PMX::materialCB(struct pmx_parse_state *state, int_fast32_t count) {
   int ret = 0;
   godot_int j, k = 0;
@@ -149,6 +155,8 @@ int PMX::materialCB(struct pmx_parse_state *state, int_fast32_t count) {
   for (int i = 0; i < count; i++) {
     ret = pmx_parser_next_material(state, &m);
     if (ret != 0) break;
+
+    
     PoolIntArray slice;
     slice.resize(m.index_count);
     for (j = 0; j < m.index_count; j++) {
@@ -257,6 +265,10 @@ extern "C" int pmx_importer_bone_cb(struct pmx_parse_state *state, int_fast32_t 
   return static_cast<PMX *>(userdata)->boneCB(state, count);
 }
 
+extern "C" int pmx_importer_morph_cb(struct pmx_parse_state *state, int_fast32_t count, void *userdata) {
+  return static_cast<PMX *>(userdata)->morphCB(state, count);
+}
+
 int PMX::parse(PoolByteArray data) {
   static const pmx_parser_callbacks_t parser_callbacks =
     {
@@ -265,7 +277,8 @@ int PMX::parse(PoolByteArray data) {
      .triangle_cb = pmx_importer_triangle_cb,
      .texture_cb = pmx_importer_texture_cb,
      .material_cb = pmx_importer_material_cb,
-     .bone_cb = pmx_importer_bone_cb
+     .bone_cb = pmx_importer_bone_cb,
+     .morph_cb = pmx_importer_morph_cb
     };
 
   return pmx_parser_parse(data.read().ptr(), data.size(), &parser_callbacks, static_cast<void *>(this));

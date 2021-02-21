@@ -112,6 +112,47 @@ typedef struct {
   } ik;
 } pmx_bone_t;
 
+typedef struct {
+  char name_local[PMX_STRING_MAX];
+  char name_universal[PMX_STRING_MAX];
+  int_fast32_t panel_type;
+  enum {group = 0,
+	vertex = 1,
+	bone = 2,
+	uv = 3,
+	uv_ext1 = 4,
+	uv_ext2 = 5,
+	uv_ext3 = 6,
+	uv_ext4 = 7,
+	material = 8,
+	flip = 9,
+	impulse = 10 } morph_type;
+  union {
+    struct {
+      int_fast32_t morph;
+      float weight;
+    } group;
+    struct {
+      int_fast32_t vertex;
+      float translation[3];
+    } vertex;
+    struct {
+      int_fast32_t bone;
+      float translation[3];
+      float rotation[4];
+    } bone;
+    struct {
+      int_fast32_t vertex;
+      float data[4];
+    } uv;
+    struct {
+      int_fast32_t material;
+      enum { multiplicative = 0, additive = 1 } blend_mode;
+      float diffuse[4], specular[3], specularity, ambient[3], edge_color[4], edge_size, texture_tint[4], environment_tint[4], toon_tint[4];
+    } material;
+  
+} pmx_morph_t;
+
 
 struct pmx_parse_state;
 
@@ -122,6 +163,7 @@ typedef struct {
   int (*texture_cb)(struct pmx_parse_state *parse_state, int_fast32_t texture_count, void *userdata);
   int (*material_cb)(struct pmx_parse_state *parse_state, int_fast32_t material_count, void *userdata);
   int (*bone_cb)(struct pmx_parse_state *parse_state, int_fast32_t bone_count, void *userdata);
+  int (*morph_cb)(struct pmx_parse_state *parse_state, int_fast32_t morph_count, void *userdata);
 } pmx_parser_callbacks_t;
 
 const char *pmx_deform_type_string(pmx_deform_type_t t);
@@ -136,6 +178,7 @@ int pmx_parser_next_texture(struct pmx_parse_state *state, char *buf,
                             size_t bufsize);
 int pmx_parser_next_material(struct pmx_parse_state *state, pmx_material_t *material);
 int pmx_parser_next_bone(struct pmx_parse_state *state, pmx_bone_t *bone);
+int pmx_parser_next_morph(struct pmx_parse_state *state, pmx_bone_t *bone);
 
 #ifdef __cplusplus
 }
