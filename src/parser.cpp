@@ -1,123 +1,95 @@
-#include <assert.h>
-#include <fcntl.h>
-#include <stdarg.h>
-#include <stdbool.h>
+#include <cstring>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
+#include <sstream>
 
-#include "parser.h"
+#include "parser.hpp"
 #include "utf.h"
 
+using namespace PMX;
 
-typedef struct pmx_parse_state {
+class Parser {
   const uint8_t *data;
   size_t offset;
   size_t size;
-  const pmx_parser_callbacks_t *callbacks;
-  pmx_model_info_t model;
-  void *userdata;
-  jmp_buf env;
-} pmx_parse_state_t;
-
-
-static void parse_error(pmx_parse_state_t *state, int result, char *fmt, ...) {
-  va_list ap;
-
-  va_start(ap, fmt);
-  vfprintf(stderr, fmt, ap);
-  va_end(ap);
-  fprintf(stderr, "\n");
-  longjmp(state->env, -1);
-}
-
-
-static void pmx_state_init(pmx_parse_state_t *state, const uint8_t *data, size_t size, const pmx_parser_callbacks_t *callbacks, void *userdata) {
-  bzero(state, sizeof *state);
-  state->data = data;
-  state->size = size;
-  state->callbacks = callbacks;
-  state->userdata = userdata;
-}
-
-
-static void check_size(pmx_parse_state_t *state, size_t needed) {
-  if (state->offset + needed > state->size) {
-    parse_error(state, -1, "Not enough data. Needed %zd, got %zd", needed, state->size - state->offset);
-  }
-}
-
-
-static const uint8_t *parse_bytes(pmx_parse_state_t *state, size_t length) {
-  check_size(state, length);
-  const uint8_t *ptr = &state->data[state->offset];
-  state->offset += length;
-  return ptr;
-}
-
-
-static void copy_bytes(pmx_parse_state_t *state, char *dest, size_t length) {
-  const uint8_t *src = parse_bytes(state, length);
-  memcpy(dest, src, length);
-}
-
-
-#define PARSER(name, ftype, rtype)                                             \
-  static rtype parse_##name(pmx_parse_state_t *state) {			\
-    check_size(state, sizeof(ftype));                                          \
-    rtype result = *(ftype *)(&state->data[state->offset]);                    \
-    state->offset += sizeof(ftype);                                            \
-    return result;                                                             \
+  ModelInfo model;
+  void check_size(size_t needed) const noexcept (false) {
+    if (offset + needed > size) {
+      std::stringstream msg;
+      msg << "Not enough data. Needed " << needed << ", got " << size - offset;
+      throw (ParseError(msg.str()));
+    }
   }
 
-
-#define RPARSER(name, ftype, rtype, repeat)                                    \
-  static void parse_##name(pmx_parse_state_t *state, rtype result[repeat]) {       \
-    check_size(state, sizeof(ftype) * repeat);                                 \
-    for (int i = 0; i < repeat; i++) {                                         \
-      result[i] = *(ftype *)(&state->data[state->offset]);                     \
-      state->offset += sizeof(ftype);                                          \
-    }                                                                          \
+  const uint8_t *parse_bytes(size_t length) noexcept (false) {
+    check_size(length);
+    const uint8_t *ptr = &data[offset];
+    offset += length;
+    return ptr;
   }
 
+  void parse_bytes(uint8_t *dest, size_t length) noexcept (false) {
+    const uint8_t *src = parse_bytes(length);
+    memcpy(dest, src, length);
+  }
+    
+  template <typename T>
+  T parse() noexcept (false) {
+    return *(T *)parse_bytes(sizeof(T));
+  };
 
-#define IPARSER(name, rtype, parser1, parser2, parser4)                        \
-  static rtype parse_##name(pmx_parse_state_t *state) {                        \
-    switch (state->model.name##_size) {                                        \
-    case 1:                                                                    \
-      return parse_##parser1(state);                                           \
-    case 2:                                                                    \
-      return parse_##parser2(state);                                           \
-    case 4:                                                                    \
-      return parse_##parser4(state);                                           \
-    default:                                                                   \
-      parse_error(state, -1, "Unsupported index size %d for " #name,               \
-                  state->model.name##_size);                                   \
-      return 0;                                                                \
-    }                                                                          \
+  template <typename T, int repeat>
+  T parse(T result[repeat]) noexcept (false) {
+    check_size(sizeof(T) * repeat);
+    for (int i = 0; i < repeat; i++) {
+      result[i] = *(T *)(&data[offset]);
+      offset += sizeof(T);
+    }
   }
 
+  template <int ModelInfo::*isize, typename FType1, typename FType2, typename FType4>
+  FType4 parse() {
+    switch (model.*isize) {
+    case 1:
+      return parse<FType1>();
+    case 2:
+      return parse<FType2>();
+    case 4:
+      return parse<FType4>();
+    }
+  }
 
-PARSER(int, int32_t, int_fast32_t);
-PARSER(uint, uint32_t, uint_fast32_t);
-PARSER(float, float, float);
-PARSER(byte, int8_t, int_fast8_t);
-PARSER(ubyte, uint8_t, uint_fast8_t);
-PARSER(short, int16_t, int_fast16_t);
-PARSER(ushort, uint16_t, uint_fast16_t);
+  int_fast32_t parse_bone_index() {
+    return parse<&ModelInfo::bone_index_size, int8_t, int16_t, int32_t>();
+  }
 
-RPARSER(vec2, float, float, 2);
-RPARSER(vec3, float, float, 3);
-RPARSER(vec4, float, float, 4);
+  int_fast32_t parse_texture_index() {
+    return parse<&ModelInfo::texture_index_size, int8_t, int16_t, int32_t>();
+  }
 
-IPARSER(bone_index, int_fast32_t, byte, short, int);
-IPARSER(texture_index, int_fast32_t, byte, short, int);
+  std::string parse_text() {
+    auto length = parse<int32_t>();
+    auto src = parse_bytes(length);
+    std::string str(length+1, 0);
+    if (model.encoding == Encoding::UTF16LE) {
+      ssize_t decoded =
+	utf16le_to_utf8(parse_bytes(length), length, str.data(), length+1);
+      if (decoded == -1)
+        parse_error(state, -1, "Buffer wasn't long enough.");
+      return decoded;
+    } else {
+      if (bufsize < length + 1)
+        parse_error(state, -1, "Buffer isn't long enough. Wanted %zd got $zd",
+                    length + 1, bufsize);
+      copy_bytes(state, buf, length);
+      buf[length] = '\0';
+      return length;
+    }
+}
 
+public:
+  Parser(const uint8_t *buf) : data(buf), offset(0), size(0) {}
+};
 
 static size_t parse_text(pmx_parse_state_t *state, char *buf, size_t bufsize) {
   uint_fast32_t length = parse_int(state);
