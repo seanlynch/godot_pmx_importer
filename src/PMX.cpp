@@ -2,7 +2,7 @@
 
 #include "PMX.h"
 
-int PMX::modelInfoCB(Ref<PMXModelInfo> model) {
+int PMX::model_info_cb(Ref<PMXModelInfo> model) {
 	model_name_local = model->model_name_local;
 	model_name_universal = model->model_name_universal;
 	comment_local = model->comment_local;
@@ -10,7 +10,7 @@ int PMX::modelInfoCB(Ref<PMXModelInfo> model) {
 	return 0;
 }
 
-int PMX::parseBoneWeights(Ref<PMXVertex> vertex, uint32_t i) {
+int PMX::parse_bone_weights(Ref<PMXVertex> vertex, uint32_t i) {
 	ERR_FAIL_NULL_V(vertex, 0);
 	int b0 = vertex->deform.non_sdef.bones[0];
 	int b1 = vertex->deform.non_sdef.bones[1];
@@ -89,7 +89,7 @@ int PMX::parseBoneWeights(Ref<PMXVertex> vertex, uint32_t i) {
 	return 0;
 }
 
-int PMX::vertexCB(Ref<PMXState> state, int32_t count) {
+int PMX::vertex_cb(Ref<PMXState> state, int32_t count) {
 	PMXVertex vertex;
 	int ret = 0;
 
@@ -105,7 +105,7 @@ int PMX::vertexCB(Ref<PMXState> state, int32_t count) {
 	return ret;
 }
 
-int PMX::triangleCB(Ref<PMXState> state, int32_t count) {
+int PMX::triangle_cb(Ref<PMXState> state, int32_t count) {
 	int ret = 0;
 	int32_t triangle[3];
 
@@ -124,7 +124,7 @@ int PMX::triangleCB(Ref<PMXState> state, int32_t count) {
 	return ret;
 }
 
-int PMX::textureCB(Ref<PMXState> state, int32_t count) {
+int PMX::texture_cb(Ref<PMXState> state, int32_t count) {
 	String buf;
 	int ret;
 
@@ -139,7 +139,7 @@ int PMX::textureCB(Ref<PMXState> state, int32_t count) {
 	return ret;
 }
 
-Array PMX::getSurfaceArrays(int32_t start, int32_t count) {
+Array PMX::get_surface_arrays(int32_t start, int32_t count) {
 	PackedVector3Array positions, normals;
 	PackedVector2Array uvs;
 	PackedInt32Array bones;
@@ -155,7 +155,7 @@ Array PMX::getSurfaceArrays(int32_t start, int32_t count) {
 	return Array();
 }
 
-int PMX::materialCB(Ref<PMXState> state, int32_t count) {
+int PMX::material_cb(Ref<PMXState> state, int32_t count) {
 	int ret = 0;
 	int32_t j, k = 0;
 	// TODO RESTORE fire 2021-09-05
@@ -221,7 +221,7 @@ int PMX::materialCB(Ref<PMXState> state, int32_t count) {
 // 	return ik;
 // }
 
-int PMX::boneCB(Ref<PMXState> state, int32_t count) {
+int PMX::bone_cb(Ref<PMXState> state, int32_t count) {
 	int ret = 0;
 	// TODO RESTORE fire 2021-09-05
 	// pmx_bone_t b;

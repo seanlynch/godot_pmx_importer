@@ -77,8 +77,8 @@ private:
     Vector<float> bone_weights;
     Vector<int32_t> triangles;
 
-	int parseBoneWeights(Ref<PMXVertex> vertex, uint32_t i);
-	Array getSurfaceArrays(int32_t start, int32_t end);
+	int parse_bone_weights(Ref<PMXVertex> vertex, uint32_t i);
+	Array get_surface_arrays(int32_t start, int32_t end);
 	String pmx_deform_type_string(PMXDeformType t) {
 		switch (t) {
 			case bdef1:
@@ -98,13 +98,13 @@ protected:
 	static void _bind_methods();
 
 public:
-	int modelInfoCB(Ref<PMXModelInfo> model);
-	int vertexCB(Ref<PMXState> state, int32_t count);
-	int triangleCB(Ref<PMXState> state, int32_t count);
-	int textureCB(Ref<PMXState> state, int32_t count);
-	int materialCB(Ref<PMXState> state, int32_t count);
-	int boneCB(Ref<PMXState> state, int32_t count);
-	int morphCB(Ref<PMXState> state, int32_t count);
+	int model_info_cb(Ref<PMXModelInfo> model);
+	int vertex_cb(Ref<PMXState> state, int32_t count);
+	int triangle_cb(Ref<PMXState> state, int32_t count);
+	int texture_cb(Ref<PMXState> state, int32_t count);
+	int material_cb(Ref<PMXState> state, int32_t count);
+	int bone_cb(Ref<PMXState> state, int32_t count);
+	int morph_cb(Ref<PMXState> state, int32_t count);
 
 	int parse(PackedByteArray data);
 };
