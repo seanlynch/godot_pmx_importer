@@ -58,8 +58,8 @@ class PMXState : public Resource {
 	GDCLASS(PMXState, Resource);
 };
 
-class PMX : public Resource {
-	GDCLASS(PMX, Resource);
+class PMXDocument : public Resource {
+	GDCLASS(PMXDocument, Resource);
 
 private:
 	String model_name_local;

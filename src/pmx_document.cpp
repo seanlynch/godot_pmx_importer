@@ -1,8 +1,8 @@
 #include "core/variant/variant.h"
 
-#include "PMX.h"
+#include "pmx_document.h"
 
-int PMX::model_info_cb(Ref<PMXModelInfo> model) {
+int PMXDocument::model_info_cb(Ref<PMXModelInfo> model) {
 	model_name_local = model->model_name_local;
 	model_name_universal = model->model_name_universal;
 	comment_local = model->comment_local;
@@ -10,7 +10,7 @@ int PMX::model_info_cb(Ref<PMXModelInfo> model) {
 	return 0;
 }
 
-int PMX::parse_bone_weights(Ref<PMXVertex> vertex, uint32_t i) {
+int PMXDocument::parse_bone_weights(Ref<PMXVertex> vertex, uint32_t i) {
 	ERR_FAIL_NULL_V(vertex, 0);
 	int b0 = vertex->deform.non_sdef.bones[0];
 	int b1 = vertex->deform.non_sdef.bones[1];
@@ -89,7 +89,7 @@ int PMX::parse_bone_weights(Ref<PMXVertex> vertex, uint32_t i) {
 	return 0;
 }
 
-int PMX::vertex_cb(Ref<PMXState> state, int32_t count) {
+int PMXDocument::vertex_cb(Ref<PMXState> state, int32_t count) {
 	PMXVertex vertex;
 	int ret = 0;
 
@@ -105,7 +105,7 @@ int PMX::vertex_cb(Ref<PMXState> state, int32_t count) {
 	return ret;
 }
 
-int PMX::triangle_cb(Ref<PMXState> state, int32_t count) {
+int PMXDocument::triangle_cb(Ref<PMXState> state, int32_t count) {
 	int ret = 0;
 	int32_t triangle[3];
 
@@ -124,7 +124,7 @@ int PMX::triangle_cb(Ref<PMXState> state, int32_t count) {
 	return ret;
 }
 
-int PMX::texture_cb(Ref<PMXState> state, int32_t count) {
+int PMXDocument::texture_cb(Ref<PMXState> state, int32_t count) {
 	String buf;
 	int ret;
 
@@ -139,7 +139,7 @@ int PMX::texture_cb(Ref<PMXState> state, int32_t count) {
 	return ret;
 }
 
-Array PMX::get_surface_arrays(int32_t start, int32_t count) {
+Array PMXDocument::get_surface_arrays(int32_t start, int32_t count) {
 	PackedVector3Array positions, normals;
 	PackedVector2Array uvs;
 	PackedInt32Array bones;
@@ -155,7 +155,7 @@ Array PMX::get_surface_arrays(int32_t start, int32_t count) {
 	return Array();
 }
 
-int PMX::material_cb(Ref<PMXState> state, int32_t count) {
+int PMXDocument::material_cb(Ref<PMXState> state, int32_t count) {
 	int ret = 0;
 	int32_t j, k = 0;
 	// TODO RESTORE fire 2021-09-05
@@ -221,7 +221,7 @@ int PMX::material_cb(Ref<PMXState> state, int32_t count) {
 // 	return ik;
 // }
 
-int PMX::bone_cb(Ref<PMXState> state, int32_t count) {
+int PMXDocument::bone_cb(Ref<PMXState> state, int32_t count) {
 	int ret = 0;
 	// TODO RESTORE fire 2021-09-05
 	// pmx_bone_t b;
@@ -264,7 +264,7 @@ int PMX::bone_cb(Ref<PMXState> state, int32_t count) {
 	return ret;
 }
 
-int PMX::parse(PackedByteArray data) {
+int PMXDocument::parse(PackedByteArray data) {
 	// TODO Restore fire 2021-09-05
 	// static const pmx_parser_callbacks_t parser_callbacks = {
 		// .model_info_cb = pmx_importer_model_info_cb,
@@ -279,8 +279,8 @@ int PMX::parse(PackedByteArray data) {
 	return 0;
 }
 
-void PMX::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("parse"), &PMX::parse);
+void PMXDocument::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("parse"), &PMXDocument::parse);
 
 	// TODO Restore fire 2021-09-05
 	// register_property<PMX, String>("model_name_local", &PMX::model_name_local, "");
