@@ -1,3 +1,5 @@
 Import('env')
 
-env.add_source_files(env.modules_sources, "*.cpp") # Add all cpp files to the build
+env.Prepend(CPPPATH=['#thirdparty/pmx/src'])
+
+env.add_source_files(env.modules_sources, "src/*.cpp") # Add all cpp files to the build
