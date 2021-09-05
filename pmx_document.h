@@ -14,8 +14,6 @@ protected:
 	static void _bind_methods();
 
 public:
-	Error parse(Ref<PMXMMDState> r_state, String p_path) { return OK; }
-	Error serialize(Ref<PMXMMDState> state, Node *p_root, const String &p_path) {
-		return OK;
-	}
+	Error parse(Ref<PMXMMDState> r_state, String p_path);
+	Error serialize(Ref<PMXMMDState> state, Node *p_root, const String &p_path);
 };
