@@ -4,7 +4,8 @@
 #include "core/templates/local_vector.h"
 #include "core/templates/safe_refcount.h"
 
-#include "parser.h"
+#include "mmd_pmx_state.h"
+
 class PMXModel : public Resource {
 	GDCLASS(PMXModel, Resource);
 };
@@ -54,11 +55,8 @@ public:
 	String comment_universal;
 };
 
-class PMXState : public Resource {
-	GDCLASS(PMXState, Resource);
-};
-
 class PMXDocument : public Resource {
+	// https://github.com/kaitai-io/kaitai_struct_formats/blob/3170d3e40fcf2acdfa93cb8a7bea553986c3c27c/3d/mmd_pmx.ksy
 	GDCLASS(PMXDocument, Resource);
 
 private:
@@ -99,12 +97,15 @@ protected:
 
 public:
 	int model_info_cb(Ref<PMXModelInfo> model);
-	int vertex_cb(Ref<PMXState> state, int32_t count);
-	int triangle_cb(Ref<PMXState> state, int32_t count);
-	int texture_cb(Ref<PMXState> state, int32_t count);
-	int material_cb(Ref<PMXState> state, int32_t count);
-	int bone_cb(Ref<PMXState> state, int32_t count);
-	int morph_cb(Ref<PMXState> state, int32_t count);
+	int vertex_cb(Ref<PMXMMDState> state, int32_t count);
+	int triangle_cb(Ref<PMXMMDState> state, int32_t count);
+	int texture_cb(Ref<PMXMMDState> state, int32_t count);
+	int material_cb(Ref<PMXMMDState> state, int32_t count);
+	int bone_cb(Ref<PMXMMDState> state, int32_t count);
+	int morph_cb(Ref<PMXMMDState> state, int32_t count);
 
-	int parse(PackedByteArray data);
+	Error parse(Ref<PMXMMDState> r_state, String p_path) { return OK; }
+	Error serialize(Ref<PMXMMDState> state, Node *p_root, const String &p_path) {
+		return OK;
+	}
 };

@@ -89,7 +89,7 @@ int PMXDocument::parse_bone_weights(Ref<PMXVertex> vertex, uint32_t i) {
 	return 0;
 }
 
-int PMXDocument::vertex_cb(Ref<PMXState> state, int32_t count) {
+int PMXDocument::vertex_cb(Ref<PMXMMDState> state, int32_t count) {
 	PMXVertex vertex;
 	int ret = 0;
 
@@ -105,7 +105,7 @@ int PMXDocument::vertex_cb(Ref<PMXState> state, int32_t count) {
 	return ret;
 }
 
-int PMXDocument::triangle_cb(Ref<PMXState> state, int32_t count) {
+int PMXDocument::triangle_cb(Ref<PMXMMDState> state, int32_t count) {
 	int ret = 0;
 	int32_t triangle[3];
 
@@ -124,7 +124,7 @@ int PMXDocument::triangle_cb(Ref<PMXState> state, int32_t count) {
 	return ret;
 }
 
-int PMXDocument::texture_cb(Ref<PMXState> state, int32_t count) {
+int PMXDocument::texture_cb(Ref<PMXMMDState> state, int32_t count) {
 	String buf;
 	int ret;
 
@@ -155,7 +155,7 @@ Array PMXDocument::get_surface_arrays(int32_t start, int32_t count) {
 	return Array();
 }
 
-int PMXDocument::material_cb(Ref<PMXState> state, int32_t count) {
+int PMXDocument::material_cb(Ref<PMXMMDState> state, int32_t count) {
 	int ret = 0;
 	int32_t j, k = 0;
 	// TODO RESTORE fire 2021-09-05
@@ -221,7 +221,7 @@ int PMXDocument::material_cb(Ref<PMXState> state, int32_t count) {
 // 	return ik;
 // }
 
-int PMXDocument::bone_cb(Ref<PMXState> state, int32_t count) {
+int PMXDocument::bone_cb(Ref<PMXMMDState> state, int32_t count) {
 	int ret = 0;
 	// TODO RESTORE fire 2021-09-05
 	// pmx_bone_t b;
@@ -264,7 +264,7 @@ int PMXDocument::bone_cb(Ref<PMXState> state, int32_t count) {
 	return ret;
 }
 
-int PMXDocument::parse(PackedByteArray data) {
+Error parse(Ref<PMXMMDState> r_state, String p_path) {
 	// TODO Restore fire 2021-09-05
 	// static const pmx_parser_callbacks_t parser_callbacks = {
 		// .model_info_cb = pmx_importer_model_info_cb,
@@ -276,7 +276,7 @@ int PMXDocument::parse(PackedByteArray data) {
 		// .morph_cb = pmx_importer_morph_cb
 	// };
 	// return pmx_parser_parse(data.read().ptr(), data.size(), &parser_callbacks, static_cast<void *>(this));
-	return 0;
+	return OK;
 }
 
 void PMXDocument::_bind_methods() {
