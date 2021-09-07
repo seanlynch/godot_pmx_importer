@@ -117,17 +117,36 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	for (int32_t bone_i = 0; bone_i < bone_count; bone_i++) {
 		Transform3D xform;
 		real_t x = bones->at(bone_i)->position()->x();
+		x *= mmd_unit_conversion;
 		real_t y = bones->at(bone_i)->position()->y();
+		y *= mmd_unit_conversion;
 		real_t z = bones->at(bone_i)->position()->z();
+		z *= mmd_unit_conversion;
 		xform.origin = Vector3(x, y, z);
 		skeleton->set_bone_rest(bone_i, xform);
-		int32_t parent_index = bones->at(bone_i)->parent_index()->value();
-		parent_index = CLAMP(parent_index, 0, UINT16_MAX);
+		int64_t parent_index = bones->at(bone_i)->parent_index()->value();
+		parent_index = CLAMP(parent_index, -1, UINT16_MAX);
 		if (parent_index == UINT16_MAX) {
 			continue;
 		}
 		ERR_CONTINUE(bone_i == -1);
 		skeleton->set_bone_parent(bone_i, parent_index);
+	}
+	for (int32_t bone_i = 0; bone_i < bone_count; bone_i++) {
+		Transform3D xform = skeleton->get_bone_rest(bone_i);
+		BoneId parent = skeleton->get_bone_parent(bone_i);
+		if (parent == -1) {
+			break;
+		}
+		// Assume bone_i is topologically sorted
+		for (int32_t iterations = 0; iterations < bone_count; iterations++) {
+			if (parent == -1) {
+				break;
+			}
+			xform.origin -= skeleton->get_bone_rest(parent).origin;
+			parent = skeleton->get_bone_parent(parent);
+		}
+		skeleton->set_bone_rest(bone_i, xform);
 	}
 	root->add_child(skeleton);
 	skeleton->set_owner(root);
