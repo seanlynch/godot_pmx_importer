@@ -3,8 +3,6 @@
 #include "editor/editor_node.h"
 
 #include "editor_scene_importer_mmd_pmx.h"
-#include "editor_scene_exporter_mmd_pmx_plugin.h"
-#include "pmx_document.h"
 
 #ifndef _3D_DISABLED
 #ifdef TOOLS_ENABLED
@@ -22,12 +20,10 @@ void register_pmx_types() {
 	ClassDB::APIType prev_api = ClassDB::get_current_api();
 	ClassDB::set_current_api(ClassDB::API_EDITOR);
 	GDREGISTER_CLASS(EditorSceneImporterMMDPMX);
-	EditorPlugins::add_by_type<SceneExporterMMDPMXPlugin>();
 	ClassDB::set_current_api(prev_api);
 	EditorNode::add_init_callback(_editor_init);
 #endif
 	GDREGISTER_CLASS(PMXMMDState);
-	GDREGISTER_CLASS(PMXDocument);
 	GDREGISTER_CLASS(PackedSceneMMDPMX);
 #endif
 }

@@ -35,7 +35,7 @@
 #include "scene/main/node.h"
 #include "scene/resources/packed_scene.h"
 
-#include "mmd_pmx_state.h"
+#include "thirdparty/ksy/mmd_pmx.h"
 
 class Animation;
 
@@ -55,6 +55,10 @@ public:
 };
 #endif
 
+class PMXMMDState : public Resource {
+	GDCLASS(PMXMMDState, Resource);
+};
+
 class PackedSceneMMDPMX : public PackedScene {
 	GDCLASS(PackedSceneMMDPMX, PackedScene);
 
@@ -62,11 +66,6 @@ protected:
 	static void _bind_methods();
 
 public:
-	virtual void save_scene(Node *p_node, const String &p_path, const String &p_src_path,
-			uint32_t p_flags, int p_bake_fps,
-			List<String> *r_missing_deps, Error *r_err = nullptr);
-	virtual Error export_mmd_pmx(Node *p_root, String p_path, int32_t p_flags = 0,
-			real_t p_bake_fps = 1000.0f);
 	virtual Node *import_scene(const String &p_path, uint32_t p_flags,
 			int p_bake_fps,
 			List<String> *r_missing_deps,

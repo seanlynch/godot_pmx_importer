@@ -30,11 +30,13 @@
 
 #include "editor_scene_importer_mmd_pmx.h"
 
-#include "pmx_document.h"
+#include "thirdparty/ksy/mmd_pmx.h"
 
 #include "scene/3d/node_3d.h"
 #include "scene/animation/animation_player.h"
 #include "scene/resources/animation.h"
+
+#include <fstream>
 
 uint32_t EditorSceneImporterMMDPMX::get_import_flags() const {
 	return ImportFlags::IMPORT_SCENE;
@@ -60,9 +62,6 @@ Ref<Animation> EditorSceneImporterMMDPMX::import_animation(const String &p_path,
 }
 
 void PackedSceneMMDPMX::_bind_methods() {
-	ClassDB::bind_method(
-			D_METHOD("export_mmd_pmx", "node", "path", "flags", "bake_fps"),
-			&PackedSceneMMDPMX::export_mmd_pmx, DEFVAL(0), DEFVAL(1000.0f));
 	ClassDB::bind_method(D_METHOD("pack_mmd_pmx", "path", "flags", "bake_fps", "state"),
 			&PackedSceneMMDPMX::pack_mmd_pmx, DEFVAL(0), DEFVAL(1000.0f), DEFVAL(Ref<PMXMMDState>()));
 	ClassDB::bind_method(D_METHOD("import_mmd_pmx_scene", "path", "flags", "bake_fps", "state"),
@@ -82,29 +81,11 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	if (r_state == Ref<PMXMMDState>()) {
 		r_state.instantiate();
 	}
-	Ref<PMXDocument> pmx_doc;
-	pmx_doc.instantiate();
-	Error err = pmx_doc->parse(r_state, p_path);
-	if (r_err) {
-		*r_err = err;
-	}
-	ERR_FAIL_COND_V(err != Error::OK, nullptr);
-
+	std::ifstream ifs(
+			ProjectSettings::get_singleton()->globalize_path(p_path).utf8().get_data(), std::ifstream::binary);
+	kaitai::kstream ks(&ifs);
+	mmd_pmx_t pmx = mmd_pmx_t(&ks);
 	Node3D *root = memnew(Node3D);
-	// TODO Restore fire 2021-09-05
-	// for (int32_t root_i = 0; root_i < r_state->root_nodes.size(); root_i++) {
-	// 	gltf_document->_generate_scene_node(r_state, root, root, r_state->root_nodes[root_i]);
-	// }
-	// gltf_document->_process_mesh_instances(r_state, root);
-	// if (r_state->animations.size()) {
-	// 	AnimationPlayer *ap = memnew(AnimationPlayer);
-	// 	root->add_child(ap);
-	// 	ap->set_owner(root);
-	// 	for (int i = 0; i < r_state->animations.size(); i++) {
-	// 		gltf_document->_import_animation(r_state, ap, i, p_bake_fps);
-	// 	}
-	// }
-
 	return root;
 }
 
@@ -115,41 +96,4 @@ void PackedSceneMMDPMX::pack_mmd_pmx(String p_path, int32_t p_flags,
 	Node *root = import_scene(p_path, p_flags, p_bake_fps, &deps, &err, r_state);
 	ERR_FAIL_COND(err != OK);
 	pack(root);
-}
-
-void PackedSceneMMDPMX::save_scene(Node *p_node, const String &p_path,
-		const String &p_src_path, uint32_t p_flags,
-		int p_bake_fps, List<String> *r_missing_deps,
-		Error *r_err) {
-	Error err = FAILED;
-	if (r_err) {
-		*r_err = err;
-	}
-	Ref<PMXDocument> pmx_do;
-	pmx_do.instantiate();
-	Ref<PMXMMDState> state;
-	state.instantiate();
-	err = pmx_do->serialize(state, p_node, p_path);
-	if (r_err) {
-		*r_err = err;
-	}
-}
-
-Error PackedSceneMMDPMX::export_mmd_pmx(Node *p_root, String p_path,
-		int32_t p_flags,
-		real_t p_bake_fps) {
-	ERR_FAIL_COND_V(!p_root, FAILED);
-	List<String> deps;
-	Error err;
-	String path = p_path;
-	int32_t flags = p_flags;
-	real_t baked_fps = p_bake_fps;
-	Ref<PackedSceneMMDPMX> exporter;
-	exporter.instantiate();
-	exporter->save_scene(p_root, path, "", flags, baked_fps, &deps, &err);
-	int32_t error_code = err;
-	if (error_code != 0) {
-		return Error(error_code);
-	}
-	return OK;
 }
