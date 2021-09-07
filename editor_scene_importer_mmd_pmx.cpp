@@ -100,9 +100,19 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	int32_t bone_count = CLAMP(pmx.bone_count(), 0, UINT16_MAX + 1);
 
 	for (int32_t bone_i = 0; bone_i < bone_count; bone_i++) {
-		String name = pick_universal_or_common(bones->at(bone_i)->english_name()->value(), bones->at(bone_i)->name()->value());
-		ERR_CONTINUE(name.is_empty());
-		skeleton->add_bone(name);
+		std::string universal = bones->at(bone_i)->english_name()->value();
+		std::string common = bones->at(bone_i)->name()->value();
+		String output_name;
+		if (universal.empty()) {
+			output_name.parse_utf8(common.data());
+		} else {
+			output_name.parse_utf8(universal.data());
+		}
+		ERR_CONTINUE(output_name.is_empty());
+		if (skeleton->find_bone(output_name) != -1) {
+			output_name.parse_utf8(common.data());
+		}
+		skeleton->add_bone(output_name);
 	}
 	for (int32_t bone_i = 0; bone_i < bone_count; bone_i++) {
 		Transform3D xform;
