@@ -209,6 +209,8 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		texture_path = texture_path.simplify_path();
 		Ref<Texture> base_color_tex = ResourceLoader::load(texture_path);
 		material->set_texture(StandardMaterial3D::TEXTURE_ALBEDO, base_color_tex);
+		color4_t diffuse = materials->at(material_i)->diffuse()->value();
+		material->set_albedo(Color(diffuse->r(), diffuse->g(), diffuse->b(), diffuse->a());
 		mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, mesh_array, Array(), Dictionary(), material, material_name);
 		mesh_3d->set_mesh(mesh);
 		mesh_3d->set_owner(root);
