@@ -352,6 +352,7 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		mesh_3d->set_name(material_name);
 		mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, mesh_array, Array(), Dictionary(), material, material_name);
 		skeleton->add_child(mesh_3d);
+		mesh_3d->set_skin(skeleton->register_skin(nullptr)->get_skin());
 		mesh_3d->set_mesh(mesh);
 		mesh_3d->set_owner(root);
 		mesh_3d->set_skeleton_path(NodePath(".."));
