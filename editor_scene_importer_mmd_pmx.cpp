@@ -100,19 +100,9 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	int32_t bone_count = CLAMP(pmx.bone_count(), 0, UINT16_MAX + 1);
 
 	for (int32_t bone_i = 0; bone_i < bone_count; bone_i++) {
-		String converted_name;
-		{
-			std::string name = bones->at(bone_i)->name()->value();
-			std::string universal_name = bones->at(bone_i)->english_name()->value();
-			String converted_universal_name;
-			converted_universal_name.parse_utf8(name.data());
-			converted_name.parse_utf8(universal_name.data());
-			if (!converted_universal_name.is_empty() && skeleton->find_bone(converted_universal_name) == -1) {
-				converted_name = converted_universal_name;
-			}
-		}
-		ERR_CONTINUE(converted_name.is_empty());
-		skeleton->add_bone(converted_name);
+		String name = pick_universal_or_common(bones->at(bone_i)->english_name()->value(), bones->at(bone_i)->name()->value());
+		ERR_CONTINUE(name.is_empty());
+		skeleton->add_bone(name);
 	}
 	for (int32_t bone_i = 0; bone_i < bone_count; bone_i++) {
 		Transform3D xform;
@@ -154,12 +144,7 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	EditorSceneImporterMeshNode3D *mesh_3d = memnew(EditorSceneImporterMeshNode3D);
 	Ref<EditorSceneImporterMesh> mesh;
 	mesh.instantiate();
-	std::string raw_model_name = pmx.header()->english_model_name()->value();
-	if (raw_model_name.empty()) {
-		raw_model_name = pmx.header()->model_name()->value();
-	}
-	String model_name;
-	model_name.parse_utf8(raw_model_name.data());
+	String model_name = pick_universal_or_common(pmx.header()->english_model_name()->value(), pmx.header()->model_name()->value());
 	mesh_3d->set_name(model_name);
 	for (int32_t material_i = 0; material_i < material_index_counts.size(); material_i++) {
 		surface->begin(Mesh::PRIMITIVE_TRIANGLES);
@@ -199,12 +184,7 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		Array mesh_array = surface->commit_to_arrays();
 		surface->clear();
 		skeleton->add_child(mesh_3d);
-		std::string raw_material_name = materials->at(material_i)->english_name()->value();
-		if (raw_material_name.empty()) {
-			raw_material_name = materials->at(material_i)->name()->value();
-		}
-		String material_name;
-		material_name.parse_utf8(raw_material_name.data());
+		String material_name = pick_universal_or_common(materials->at(material_i)->english_name()->value(), materials->at(material_i)->name()->value());
 		Ref<StandardMaterial3D> material;
 		material.instantiate();
 		uint32_t texture_index = materials->at(material_i)->texture_index()->value();
@@ -225,12 +205,8 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	std::vector<std::unique_ptr<mmd_pmx_t::rigid_body_t> > *rigid_bodies = pmx.rigid_bodies();
 	for (int32_t rigid_bodies_i = 0; rigid_bodies_i < pmx.rigid_body_count(); rigid_bodies_i++) {
 		RigidBody3D *rigid_3d = memnew(RigidBody3D);
-		std::string std_name = rigid_bodies->at(rigid_bodies_i)->english_name()->value();
-		if (std_name.empty()) {
-			std_name = rigid_bodies->at(rigid_bodies_i)->name()->value();
-		}
-		String rigid_name;
-		rigid_name.parse_utf8(std_name.data());
+		String rigid_name = pick_universal_or_common(rigid_bodies->at(rigid_bodies_i)->english_name()->value(),
+				rigid_bodies->at(rigid_bodies_i)->name()->value());
 		rigid_3d->set_name(rigid_name);
 		root->add_child(rigid_3d);
 		rigid_3d->set_owner(root);
@@ -245,4 +221,14 @@ void PackedSceneMMDPMX::pack_mmd_pmx(String p_path, int32_t p_flags,
 	Node *root = import_scene(p_path, p_flags, p_bake_fps, &deps, &err, r_state);
 	ERR_FAIL_COND(err != OK);
 	pack(root);
+}
+
+String PackedSceneMMDPMX::pick_universal_or_common(std::string p_universal, std::string p_common) {
+	String output_name;
+	output_name.parse_utf8(p_universal.data());
+	if (output_name.is_empty()) {
+		const std::string common_name = p_common;
+		output_name.parse_utf8(common_name.data());
+	}
+	return output_name;
 }
