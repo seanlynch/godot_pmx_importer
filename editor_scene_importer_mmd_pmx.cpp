@@ -151,11 +151,6 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		int32_t count = materials->at(material_i)->face_vertex_count();
 		material_index_counts.write[material_i].end = start + count;
 	}
-	EditorSceneImporterMeshNode3D *mesh_3d = memnew(EditorSceneImporterMeshNode3D);
-	Ref<EditorSceneImporterMesh> mesh;
-	mesh.instantiate();
-	String model_name = pick_universal_or_common(pmx.header()->english_model_name()->value(), pmx.header()->model_name()->value());
-	mesh_3d->set_name(model_name);
 	for (int32_t material_i = 0; material_i < material_index_counts.size(); material_i++) {
 		surface->begin(Mesh::PRIMITIVE_TRIANGLES);
 		std::vector<std::unique_ptr<mmd_pmx_t::vertex_t> > *vertices = pmx.vertices();
@@ -206,11 +201,16 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		material->set_texture(StandardMaterial3D::TEXTURE_ALBEDO, base_color_tex);
 		mmd_pmx_t::color4_t *diffuse = materials->at(material_i)->diffuse();
 		material->set_albedo(Color(diffuse->r(), diffuse->g(), diffuse->b(), diffuse->a()));
+		EditorSceneImporterMeshNode3D *mesh_3d = memnew(EditorSceneImporterMeshNode3D);
+		Ref<EditorSceneImporterMesh> mesh;
+		mesh.instantiate();
+		String model_name = pick_universal_or_common(pmx.header()->english_model_name()->value(), pmx.header()->model_name()->value());
+		mesh_3d->set_name(material_name);
 		mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, mesh_array, Array(), Dictionary(), material, material_name);
+		skeleton->add_child(mesh_3d);
+		mesh_3d->set_mesh(mesh);
+		mesh_3d->set_owner(root);
 	}
-	skeleton->add_child(mesh_3d);
-	mesh_3d->set_mesh(mesh);
-	mesh_3d->set_owner(root);
 
 	std::vector<std::unique_ptr<mmd_pmx_t::rigid_body_t> > *rigid_bodies = pmx.rigid_bodies();
 	for (uint32_t rigid_bodies_i = 0; rigid_bodies_i < pmx.rigid_body_count(); rigid_bodies_i++) {
