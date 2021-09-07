@@ -40,6 +40,7 @@
 #include "scene/resources/surface_tool.h"
 
 #include <fstream>
+#include <string>
 
 uint32_t EditorSceneImporterMMDPMX::get_import_flags() const {
 	return ImportFlags::IMPORT_SCENE;
@@ -90,6 +91,23 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	mmd_pmx_t pmx = mmd_pmx_t(&ks);
 	Node3D *root = memnew(Node3D);
 
+	std::vector<std::unique_ptr<mmd_pmx_t::bone_t> > *bones = pmx.bones();
+
+	Skeleton3D *skeleton = memnew(Skeleton3D);
+
+	for (int32_t bone_i = 0; bone_i < pmx.bone_count(); bone_i++) {
+		std::string name = bones->at(bone_i)->name()->value();
+		String bone_name;
+		bone_name.parse_utf8(name.data(), bones->at(bone_i)->name()->length());
+		skeleton->add_bone(bone_name);
+	}
+	for (int32_t bone_i = 0; bone_i < pmx.bone_count(); bone_i++) {
+		int32_t parent_index = bones->at(bone_i)->parent_index()->value();
+		skeleton->set_bone_parent(bone_i, parent_index);
+	}
+	root->add_child(skeleton);
+	skeleton->set_owner(root);
+
 	Ref<SurfaceTool> surface;
 	surface.instantiate();
 	surface->begin(Mesh::PRIMITIVE_TRIANGLES);
@@ -109,18 +127,20 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	}
 	Ref<ArrayMesh> mesh = surface->commit();
 	mesh_3d->set_mesh(mesh);
-	// std::string std_name = rigid_bodies->at(rigid_bodies_i)->name()->value();
-	// String name = name.c_str();
-	// mesh_3d->set_name(name);
-	root->add_child(mesh_3d);
+	std::string std_name = pmx.header()->english_model_name()->value();
+	String model_name;
+	model_name.parse_utf8(std_name.data(), pmx.header()->english_model_name()->length());
+	mesh_3d->set_name(model_name);
+	skeleton->add_child(mesh_3d);
 	mesh_3d->set_owner(root);
 
 	std::vector<std::unique_ptr<mmd_pmx_t::rigid_body_t> > *rigid_bodies = pmx.rigid_bodies();
 	for (int32_t rigid_bodies_i = 0; rigid_bodies_i < pmx.rigid_body_count(); rigid_bodies_i++) {
 		RigidBody3D *rigid_3d = memnew(RigidBody3D);
-		// std::string std_name = rigid_bodies->at(rigid_bodies_i)->name()->value();
-		// String name = name.c_str();
-		// rigid_3d->set_name(name);
+		std::string std_name = rigid_bodies->at(rigid_bodies_i)->name()->value();
+		String rigid_name;
+		rigid_name.parse_utf8(std_name.data(), rigid_bodies->at(rigid_bodies_i)->name()->length());
+		rigid_3d->set_name(rigid_name);
 		root->add_child(rigid_3d);
 		rigid_3d->set_owner(root);
 	}
