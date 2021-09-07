@@ -124,20 +124,36 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		z *= mmd_unit_conversion;
 		xform.origin = Vector3(x, y, z);
 		skeleton->set_bone_rest(bone_i, xform);
-		int64_t parent_index = bones->at(bone_i)->parent_index()->value();
-		parent_index = CLAMP(parent_index, -1, UINT16_MAX);
-		if (parent_index == UINT16_MAX) {
-			continue;
+		switch (bones->at(bone_i)->parent_index()->size()) {
+			case 1: {
+				uint8_t parent_index = bones->at(bone_i)->parent_index()->value();
+				if (parent_index == UINT8_MAX) {
+					continue;
+				}
+				skeleton->set_bone_parent(bone_i, parent_index);
+			} break;
+			case 2: {
+				uint16_t parent_index = bones->at(bone_i)->parent_index()->value();
+				if (parent_index == UINT16_MAX) {
+					continue;
+				}
+				skeleton->set_bone_parent(bone_i, parent_index);
+			} break;
+			case 4: {
+				uint32_t parent_index = bones->at(bone_i)->parent_index()->value();
+				if (parent_index == UINT32_MAX) {
+					continue;
+				}
+				skeleton->set_bone_parent(bone_i, parent_index);
+			} break;
+			default:
+				break;
+				// nothing
 		}
-		ERR_CONTINUE(bone_i == -1);
-		skeleton->set_bone_parent(bone_i, parent_index);
 	}
 	for (int32_t bone_i = 0; bone_i < bone_count; bone_i++) {
 		Transform3D xform = skeleton->get_bone_rest(bone_i);
 		BoneId parent = skeleton->get_bone_parent(bone_i);
-		if (parent == -1) {
-			break;
-		}
 		// Assume bone_i is topologically sorted
 		for (int32_t iterations = 0; iterations < bone_count; iterations++) {
 			if (parent == -1) {
@@ -151,8 +167,6 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	root->add_child(skeleton);
 	skeleton->set_owner(root);
 	std::vector<std::unique_ptr<mmd_pmx_t::material_t> > *materials = pmx.materials();
-	Ref<SurfaceTool> surface;
-	surface.instantiate();
 	struct MMDMaterialVertexCounts {
 		uint32_t start = 0;
 		uint32_t end = 0;
@@ -170,6 +184,8 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		material_index_counts.write[material_i].end = start + count;
 	}
 	for (int32_t material_i = 0; material_i < material_index_counts.size(); material_i++) {
+		Ref<SurfaceTool> surface;
+		surface.instantiate();
 		surface->begin(Mesh::PRIMITIVE_TRIANGLES);
 		std::vector<std::unique_ptr<mmd_pmx_t::vertex_t> > *vertices = pmx.vertices();
 		for (uint32_t vertex_i = 0; vertex_i < pmx.vertex_count(); vertex_i++) {
@@ -189,57 +205,121 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 			z = vertices->at(vertex_i)->position()->z();
 			z *= mmd_unit_conversion;
 			Vector3 point = Vector3(x, y, z);
-			// PackedInt32Array bones;
-			// bones.resize(RS::ARRAY_WEIGHTS_SIZE);
-			// PackedFloat32Array weights;
-			// weights.resize(RS::ARRAY_WEIGHTS_SIZE);
-			// mmd_pmx_t::bone_type_t bone_type = vertices->at(vertex_i)->type();
-			// switch (bone_type) {
-			// 	case mmd_pmx_t::BONE_TYPE_BDEF1: {
-			// 		mmd_pmx_t::bdef1_weights_t *pmx_weights = (mmd_pmx_t::bdef1_weights_t *)vertices->at(vertex_i)->skin_weights();
-			// 		int32_t bone_index_0 = pmx_weights->bone_index()->value();
-			// 		bone_index_0 = CLAMP(bone_index_0, -1, UINT16_MAX);
-			// 		if (bone_index_0 != UINT16_MAX) {
-			// 			bones.write[0] = bone_index_0;
-			// 			weights.write[0] = 1.0f;
-			// 		}
-			// 	} break;
-			// 	case mmd_pmx_t::BONE_TYPE_BDEF2: {
-			// 		mmd_pmx_t::bdef2_weights_t *pmx_weights = (mmd_pmx_t::bdef2_weights_t *)vertices->at(vertex_i)->skin_weights();
-			// 		int32_t bone_index_0 = pmx_weights->bone_indices()->at(0)->value();
-			// 		bone_index_0 = CLAMP(bone_index_0, -1, UINT16_MAX);
-			// 		if (bone_index_0 != UINT16_MAX) {
-			// 			bones.write[0] = bone_index_0;
-			// 		}
-			// 		int32_t bone_index_1 = pmx_weights->bone_indices()->at(1)->value();
-			// 		bone_index_1 = CLAMP(bone_index_1, -1, UINT16_MAX);
-			// 		if (bone_index_1 != UINT16_MAX) {
-			// 			bones.write[0] = bone_index_1;
-			// 		}
-			// 		weights.write[0] = pmx_weights->weight1();
-			// 		weights.write[1] = 1.0f - pmx_weights->weight1();
-			// 	} break;
-			// 	case mmd_pmx_t::BONE_TYPE_BDEF4: {
-			// 		mmd_pmx_t::bdef4_weights_t *pmx_weights = (mmd_pmx_t::bdef4_weights_t *)vertices->at(vertex_i)->skin_weights();
-			// 		for (int32_t count = 0; count < RS::ARRAY_WEIGHTS_SIZE; count++) {
-			// 			int32_t bone_index = pmx_weights->bone_indices()->at(count)->value();
-			// 			bone_index = CLAMP(bone_index, -1, UINT16_MAX);
-			// 			if (bone_index != UINT16_MAX) {
-			// 				bones.write[count] = bone_index;
-			// 			}
-			// 			weights.write[count] = pmx_weights->weights()->at(count);
-			// 		}
-			// 	} break;
-			// 	case mmd_pmx_t::BONE_TYPE_SDEF: {
-			// 	} break;
-			// 	case mmd_pmx_t::BONE_TYPE_QDEF: {
-			// 	} break;
-			// 	default:
-			// 		break;
-			// 		// nothing
-			// }
-			// surface->set_bones(bones);
-			// surface->set_weights(weights);
+			PackedInt32Array bones;
+			bones.push_back(0);
+			bones.push_back(0);
+			bones.push_back(0);
+			bones.push_back(0);
+			PackedFloat32Array weights;
+			weights.push_back(0.0f);
+			weights.push_back(0.0f);
+			weights.push_back(0.0f);
+			weights.push_back(0.0f);
+			if (!vertices->at(vertex_i)->_is_null_skin_weights()) {
+				mmd_pmx_t::bone_type_t bone_type = vertices->at(vertex_i)->type();
+				switch (bone_type) {
+					case mmd_pmx_t::BONE_TYPE_BDEF1: {
+						mmd_pmx_t::bdef1_weights_t *pmx_weights = (mmd_pmx_t::bdef1_weights_t *)vertices->at(vertex_i)->skin_weights();
+						switch (pmx_weights->bone_index()->size()) {
+							case 1: {
+								uint8_t bone_index = pmx_weights->bone_index()->value();
+								if (bone_index != UINT8_MAX) {
+									bones.write[0] = bone_index;
+									weights.write[0] = 1.0f;
+								}
+							} break;
+							case 2: {
+								uint16_t bone_index = pmx_weights->bone_index()->value();
+								if (bone_index != UINT16_MAX) {
+									bones.write[0] = bone_index;
+									weights.write[0] = 1.0f;
+								}
+							} break;
+							case 4: {
+								uint32_t bone_index = pmx_weights->bone_index()->value();
+								if (bone_index != UINT32_MAX) {
+									bones.write[0] = bone_index;
+									weights.write[0] = 1.0f;
+								}
+							} break;
+							default:
+								break;
+								// nothing
+						}
+					} break;
+					case mmd_pmx_t::BONE_TYPE_BDEF2: {
+						mmd_pmx_t::bdef2_weights_t *pmx_weights = (mmd_pmx_t::bdef2_weights_t *)vertices->at(vertex_i)->skin_weights();
+						for (int32_t count = 0; count < 2; count++) {
+							switch (pmx_weights->bone_indices()->at(count)->size()) {
+								case 1: {
+									uint8_t bone_index = pmx_weights->bone_indices()->at(count)->value();
+									if (bone_index != UINT8_MAX) {
+										bones.write[count] = bone_index;
+										weights.write[count] = pmx_weights->weights()->at(count);
+									}
+								} break;
+								case 2: {
+									uint16_t bone_index = pmx_weights->bone_indices()->at(count)->value();
+									if (bone_index != UINT16_MAX) {
+										bones.write[count] = bone_index;
+										weights.write[count] = pmx_weights->weights()->at(count);
+									}
+								} break;
+								case 4: {
+									uint32_t bone_index = pmx_weights->bone_indices()->at(count)->value();
+									if (bone_index != UINT32_MAX) {
+										bones.write[count] = bone_index;
+										weights.write[count] = pmx_weights->weights()->at(count);
+									}
+								} break;
+								default:
+									break;
+									// nothing
+							}
+						}
+					} break;
+					case mmd_pmx_t::BONE_TYPE_BDEF4: {
+						mmd_pmx_t::bdef4_weights_t *pmx_weights = (mmd_pmx_t::bdef4_weights_t *)vertices->at(vertex_i)->skin_weights();
+						for (int32_t count = 0; count < RS::ARRAY_WEIGHTS_SIZE; count++) {
+							switch (pmx_weights->bone_indices()->at(count)->size()) {
+								case 1: {
+									uint8_t bone_index = pmx_weights->bone_indices()->at(count)->value();
+									if (bone_index != UINT8_MAX) {
+										bones.write[count] = bone_index;
+										weights.write[count] = pmx_weights->weights()->at(count);
+									}
+								} break;
+								case 2: {
+									uint16_t bone_index = pmx_weights->bone_indices()->at(count)->value();
+									if (bone_index != UINT16_MAX) {
+										bones.write[count] = bone_index;
+										weights.write[count] = pmx_weights->weights()->at(count);
+									}
+								} break;
+								case 4: {
+									uint32_t bone_index = pmx_weights->bone_indices()->at(count)->value();
+									if (bone_index != UINT32_MAX) {
+										bones.write[count] = bone_index;
+										weights.write[count] = pmx_weights->weights()->at(count);
+									}
+								} break;
+								default:
+									break;
+									// nothing
+							}
+						}
+					} break;
+					case mmd_pmx_t::BONE_TYPE_SDEF: {
+					} break;
+					case mmd_pmx_t::BONE_TYPE_QDEF: {
+					} break;
+					default:
+						break;
+						// nothing
+				}
+				surface->set_bones(bones);
+				surface->set_weights(weights);
+			}
 			surface->add_vertex(point);
 		}
 		std::vector<std::unique_ptr<mmd_pmx_t::face_t> > *faces = pmx.faces();
