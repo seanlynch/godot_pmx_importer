@@ -117,11 +117,8 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	for (int32_t bone_i = 0; bone_i < bone_count; bone_i++) {
 		Transform3D xform;
 		real_t x = bones->at(bone_i)->position()->x();
-		x *= mmd_unit_conversion;
 		real_t y = bones->at(bone_i)->position()->y();
-		y *= mmd_unit_conversion;
 		real_t z = bones->at(bone_i)->position()->z();
-		z *= mmd_unit_conversion;
 		xform.origin = Vector3(x, y, z);
 		skeleton->set_bone_rest(bone_i, xform);
 		switch (bones->at(bone_i)->parent_index()->size()) {
@@ -199,11 +196,8 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 			Vector2 uv = Vector2(x, y);
 			surface->set_uv(uv);
 			x = vertices->at(vertex_i)->position()->x();
-			x *= mmd_unit_conversion;
 			y = vertices->at(vertex_i)->position()->y();
-			y *= mmd_unit_conversion;
 			z = vertices->at(vertex_i)->position()->z();
-			z *= mmd_unit_conversion;
 			Vector3 point = Vector3(x, y, z);
 			PackedInt32Array bones;
 			bones.push_back(0);
