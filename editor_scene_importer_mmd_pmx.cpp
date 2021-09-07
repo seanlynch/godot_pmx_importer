@@ -32,9 +32,12 @@
 
 #include "thirdparty/ksy/mmd_pmx.h"
 
+#include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/node_3d.h"
+#include "scene/3d/physics_body_3d.h"
 #include "scene/animation/animation_player.h"
 #include "scene/resources/animation.h"
+#include "scene/resources/surface_tool.h"
 
 #include <fstream>
 
@@ -86,6 +89,41 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	kaitai::kstream ks(&ifs);
 	mmd_pmx_t pmx = mmd_pmx_t(&ks);
 	Node3D *root = memnew(Node3D);
+
+	Ref<SurfaceTool> surface;
+	surface.instantiate();
+	surface->begin(Mesh::PRIMITIVE_TRIANGLES);
+	MeshInstance3D *mesh_3d = memnew(MeshInstance3D);
+	std::vector<std::unique_ptr<mmd_pmx_t::vertex_t> > *vertices = pmx.vertices();
+	for (int32_t vertex_i = 0; vertex_i < pmx.vertex_count(); vertex_i++) {
+		create_vertex(vertex_i, vertices, surface);
+	}
+	std::vector<std::unique_ptr<mmd_pmx_t::face_t> > *faces = pmx.faces();
+	for (int32_t vertex_i = 0; vertex_i < pmx.face_vertex_count() / 3; vertex_i++) {
+		int32_t index = faces->at(vertex_i)->indices()->at(0)->value();
+		surface->add_index(index);
+		index = faces->at(vertex_i)->indices()->at(2)->value();
+		surface->add_index(index);
+		index = faces->at(vertex_i)->indices()->at(1)->value();
+		surface->add_index(index);
+	}
+	Ref<ArrayMesh> mesh = surface->commit();
+	mesh_3d->set_mesh(mesh);
+	// std::string std_name = rigid_bodies->at(rigid_bodies_i)->name()->value();
+	// String name = name.c_str();
+	// mesh_3d->set_name(name);
+	root->add_child(mesh_3d);
+	mesh_3d->set_owner(root);
+
+	std::vector<std::unique_ptr<mmd_pmx_t::rigid_body_t> > *rigid_bodies = pmx.rigid_bodies();
+	for (int32_t rigid_bodies_i = 0; rigid_bodies_i < pmx.rigid_body_count(); rigid_bodies_i++) {
+		RigidBody3D *rigid_3d = memnew(RigidBody3D);
+		// std::string std_name = rigid_bodies->at(rigid_bodies_i)->name()->value();
+		// String name = name.c_str();
+		// rigid_3d->set_name(name);
+		root->add_child(rigid_3d);
+		rigid_3d->set_owner(root);
+	}
 	return root;
 }
 
@@ -96,4 +134,21 @@ void PackedSceneMMDPMX::pack_mmd_pmx(String p_path, int32_t p_flags,
 	Node *root = import_scene(p_path, p_flags, p_bake_fps, &deps, &err, r_state);
 	ERR_FAIL_COND(err != OK);
 	pack(root);
+}
+
+void PackedSceneMMDPMX::create_vertex(int32_t p_vertex, const std::vector<std::unique_ptr<mmd_pmx_t::vertex_t> > *p_vertices, Ref<SurfaceTool> p_surface) {
+	real_t x = p_vertices->at(p_vertex)->normal()->x();
+	real_t y = p_vertices->at(p_vertex)->normal()->y();
+	real_t z = p_vertices->at(p_vertex)->normal()->z();
+	Vector3 normal = Vector3(x, y, z);
+	p_surface->set_normal(normal);
+	x = p_vertices->at(p_vertex)->uv()->x();
+	y = p_vertices->at(p_vertex)->uv()->y();
+	Vector2 uv = Vector2(x, y);
+	p_surface->set_uv(uv);
+	x = p_vertices->at(p_vertex)->position()->x();
+	y = p_vertices->at(p_vertex)->position()->y();
+	z = p_vertices->at(p_vertex)->position()->z();
+	Vector3 point = Vector3(x, y, z);
+	p_surface->add_vertex(point);
 }

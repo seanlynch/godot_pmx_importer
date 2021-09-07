@@ -34,6 +34,7 @@
 #include "editor/import/resource_importer_scene.h"
 #include "scene/main/node.h"
 #include "scene/resources/packed_scene.h"
+#include "scene/resources/surface_tool.h"
 
 #include "thirdparty/ksy/mmd_pmx.h"
 
@@ -61,6 +62,8 @@ class PMXMMDState : public Resource {
 
 class PackedSceneMMDPMX : public PackedScene {
 	GDCLASS(PackedSceneMMDPMX, PackedScene);
+
+	void create_vertex(int32_t p_vertex, const std::vector<std::unique_ptr<mmd_pmx_t::vertex_t> > *p_vertices, Ref<SurfaceTool> p_surface);
 
 protected:
 	static void _bind_methods();
