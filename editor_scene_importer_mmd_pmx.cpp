@@ -183,7 +183,6 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		surface->index();
 		Array mesh_array = surface->commit_to_arrays();
 		surface->clear();
-		skeleton->add_child(mesh_3d);
 		String material_name = pick_universal_or_common(materials->at(material_i)->english_name()->value(), materials->at(material_i)->name()->value());
 		Ref<StandardMaterial3D> material;
 		material.instantiate();
@@ -199,6 +198,7 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		material->set_albedo(Color(diffuse->r(), diffuse->g(), diffuse->b(), diffuse->a()));
 		mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, mesh_array, Array(), Dictionary(), material, material_name);
 	}
+	skeleton->add_child(mesh_3d);
 	mesh_3d->set_mesh(mesh);
 	mesh_3d->set_owner(root);
 
