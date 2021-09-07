@@ -39,6 +39,7 @@
 #include "scene/resources/animation.h"
 #include "scene/resources/surface_tool.h"
 
+#include <cstdint>
 #include <fstream>
 #include <string>
 
@@ -95,15 +96,24 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 
 	Skeleton3D *skeleton = memnew(Skeleton3D);
 
-	for (int32_t bone_i = 0; bone_i < pmx.bone_count(); bone_i++) {
-		std::string name = bones->at(bone_i)->english_name()->value();
-		String bone_name;
-		bone_name.parse_utf8(name.data());
-		skeleton->add_bone(bone_name);
+	int32_t bone_count = CLAMP(pmx.bone_count(), 0, UINT16_MAX + 1);
+
+	for (int32_t bone_i = 0; bone_i < bone_count; bone_i++) {
+		String converted_name;
+		{
+			std::string name = bones->at(bone_i)->name()->value();
+			std::string universal_name = bones->at(bone_i)->english_name()->value();
+			String converted_universal_name;
+			converted_universal_name.parse_utf8(name.data());
+			converted_name.parse_utf8(universal_name.data());
+			if (!converted_universal_name.is_empty() && skeleton->find_bone(converted_universal_name) == -1) {
+				converted_name = converted_universal_name;
+			}
+		}
+		ERR_CONTINUE(converted_name.is_empty());
+		skeleton->add_bone(converted_name);
 	}
-	for (int32_t bone_i = 0; bone_i < pmx.bone_count(); bone_i++) {
-		uint16_t parent_index = bones->at(bone_i)->parent_index()->value();
-		skeleton->set_bone_parent(bone_i, parent_index);
+	for (int32_t bone_i = 0; bone_i < bone_count; bone_i++) {
 		Transform3D xform;
 		real_t x = bones->at(bone_i)->position()->x();
 		x *= mmd_unit_conversion;
@@ -113,40 +123,90 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		z *= mmd_unit_conversion;
 		xform.origin = Vector3(x, y, z);
 		skeleton->set_bone_rest(bone_i, xform);
+		int32_t parent_index = bones->at(bone_i)->parent_index()->value();
+		parent_index = CLAMP(parent_index, 0, UINT16_MAX);
+		if (parent_index == UINT16_MAX) {
+			continue;
+		}
+		ERR_CONTINUE(bone_i == -1);
+		skeleton->set_bone_parent(bone_i, parent_index);
 	}
 	root->add_child(skeleton);
 	skeleton->set_owner(root);
-
+	std::vector<std::unique_ptr<mmd_pmx_t::material_t> > *materials = pmx.materials();
 	Ref<SurfaceTool> surface;
 	surface.instantiate();
-	surface->begin(Mesh::PRIMITIVE_TRIANGLES);
-	MeshInstance3D *mesh_3d = memnew(MeshInstance3D);
-	std::vector<std::unique_ptr<mmd_pmx_t::vertex_t> > *vertices = pmx.vertices();
-	for (int32_t vertex_i = 0; vertex_i < pmx.vertex_count(); vertex_i++) {
-		create_vertex(vertex_i, vertices, surface);
+	struct MMDMaterialVertexCounts {
+		int32_t start = 0;
+		int32_t end = 0;
+	};
+	Vector<MMDMaterialVertexCounts> material_index_counts;
+	material_index_counts.resize(pmx.material_count());
+	for (int32_t material_i = 0; material_i < pmx.material_count(); material_i++) {
+		if (material_i != 0) {
+			material_index_counts.write[material_i].start = material_index_counts[material_i - 1].end;
+		}
+		int32_t start = material_index_counts[material_i].start;
+		int32_t count = materials->at(material_i)->face_vertex_count();
+		material_index_counts.write[material_i].end = start + count;
 	}
-	std::vector<std::unique_ptr<mmd_pmx_t::face_t> > *faces = pmx.faces();
-	for (int32_t vertex_i = 0; vertex_i < pmx.face_vertex_count() / 3; vertex_i++) {
-		int32_t index = faces->at(vertex_i)->indices()->at(0)->value();
-		surface->add_index(index);
-		index = faces->at(vertex_i)->indices()->at(2)->value();
-		surface->add_index(index);
-		index = faces->at(vertex_i)->indices()->at(1)->value();
-		surface->add_index(index);
+	for (int32_t material_i = 0; material_i < material_index_counts.size(); material_i++) {
+		surface->begin(Mesh::PRIMITIVE_TRIANGLES);
+		MeshInstance3D *mesh_3d = memnew(MeshInstance3D);
+		std::vector<std::unique_ptr<mmd_pmx_t::vertex_t> > *vertices = pmx.vertices();
+		for (int32_t vertex_i = 0; vertex_i < pmx.vertex_count(); vertex_i++) {
+			real_t x = vertices->at(vertex_i)->normal()->x();
+			real_t y = vertices->at(vertex_i)->normal()->y();
+			real_t z = vertices->at(vertex_i)->normal()->z();
+			Vector3 normal = Vector3(x, y, z);
+			surface->set_normal(normal);
+			x = vertices->at(vertex_i)->uv()->x();
+			y = vertices->at(vertex_i)->uv()->y();
+			Vector2 uv = Vector2(x, y);
+			surface->set_uv(uv);
+			x = vertices->at(vertex_i)->position()->x();
+			x *= mmd_unit_conversion;
+			y = vertices->at(vertex_i)->position()->y();
+			y *= mmd_unit_conversion;
+			z = vertices->at(vertex_i)->position()->z();
+			z *= mmd_unit_conversion;
+			Vector3 point = Vector3(x, y, z);
+			surface->add_vertex(point);
+		}
+		std::vector<std::unique_ptr<mmd_pmx_t::face_t> > *faces = pmx.faces();
+		for (int32_t face_vertex_i = material_index_counts[material_i].start - 1; face_vertex_i < material_index_counts[material_i].end;
+				face_vertex_i += 3) {
+			int32_t face_i = face_vertex_i / 3;
+			int32_t index = faces->at(face_i)->indices()->at(0)->value();
+			surface->add_index(index);
+			index = faces->at(face_i)->indices()->at(2)->value();
+			surface->add_index(index);
+			index = faces->at(face_i)->indices()->at(1)->value();
+			surface->add_index(index);
+		}
+		surface->deindex();
+		surface->index();
+		Ref<ArrayMesh> mesh = surface->commit();
+		surface->clear();
+		mesh_3d->set_mesh(mesh);
+		skeleton->add_child(mesh_3d);
+		std::string raw_material_name = materials->at(material_i)->english_name()->value();
+		if (raw_material_name.empty()) {
+			raw_material_name = materials->at(material_i)->name()->value();
+		}
+		String material_name;
+		material_name.parse_utf8(raw_material_name.data());
+		mesh_3d->set_name(material_name);
+		mesh_3d->set_owner(root);
 	}
-	Ref<ArrayMesh> mesh = surface->commit();
-	mesh_3d->set_mesh(mesh);
-	std::string std_name = pmx.header()->english_model_name()->value();
-	String model_name;
-	model_name.parse_utf8(std_name.data());
-	mesh_3d->set_name(model_name);
-	skeleton->add_child(mesh_3d);
-	mesh_3d->set_owner(root);
 
 	std::vector<std::unique_ptr<mmd_pmx_t::rigid_body_t> > *rigid_bodies = pmx.rigid_bodies();
 	for (int32_t rigid_bodies_i = 0; rigid_bodies_i < pmx.rigid_body_count(); rigid_bodies_i++) {
 		RigidBody3D *rigid_3d = memnew(RigidBody3D);
 		std::string std_name = rigid_bodies->at(rigid_bodies_i)->english_name()->value();
+		if (std_name.empty()) {
+			std_name = rigid_bodies->at(rigid_bodies_i)->name()->value();
+		}
 		String rigid_name;
 		rigid_name.parse_utf8(std_name.data());
 		rigid_3d->set_name(rigid_name);
@@ -163,24 +223,4 @@ void PackedSceneMMDPMX::pack_mmd_pmx(String p_path, int32_t p_flags,
 	Node *root = import_scene(p_path, p_flags, p_bake_fps, &deps, &err, r_state);
 	ERR_FAIL_COND(err != OK);
 	pack(root);
-}
-
-void PackedSceneMMDPMX::create_vertex(int32_t p_vertex, const std::vector<std::unique_ptr<mmd_pmx_t::vertex_t> > *p_vertices, Ref<SurfaceTool> p_surface) {
-	real_t x = p_vertices->at(p_vertex)->normal()->x();
-	real_t y = p_vertices->at(p_vertex)->normal()->y();
-	real_t z = p_vertices->at(p_vertex)->normal()->z();
-	Vector3 normal = Vector3(x, y, z);
-	p_surface->set_normal(normal);
-	x = p_vertices->at(p_vertex)->uv()->x();
-	y = p_vertices->at(p_vertex)->uv()->y();
-	Vector2 uv = Vector2(x, y);
-	p_surface->set_uv(uv);
-	x = p_vertices->at(p_vertex)->position()->x();
-	x *= mmd_unit_conversion;
-	y = p_vertices->at(p_vertex)->position()->y();
-	y *= mmd_unit_conversion;
-	z = p_vertices->at(p_vertex)->position()->z();
-	z *= mmd_unit_conversion;
-	Vector3 point = Vector3(x, y, z);
-	p_surface->add_vertex(point);
 }

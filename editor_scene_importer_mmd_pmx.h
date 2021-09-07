@@ -63,7 +63,6 @@ class PMXMMDState : public Resource {
 class PackedSceneMMDPMX : public PackedScene {
 	GDCLASS(PackedSceneMMDPMX, PackedScene);
 
-	void create_vertex(int32_t p_vertex, const std::vector<std::unique_ptr<mmd_pmx_t::vertex_t> > *p_vertices, Ref<SurfaceTool> p_surface);
 	const real_t mmd_unit_conversion = 0.079f;
 protected:
 	static void _bind_methods();
