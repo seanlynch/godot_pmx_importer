@@ -102,7 +102,7 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		skeleton->add_bone(bone_name);
 	}
 	for (int32_t bone_i = 0; bone_i < pmx.bone_count(); bone_i++) {
-		int32_t parent_index = bones->at(bone_i)->parent_index()->value();
+		uint16_t parent_index = bones->at(bone_i)->parent_index()->value();
 		skeleton->set_bone_parent(bone_i, parent_index);
 		Transform3D xform;
 		real_t x = bones->at(bone_i)->position()->x();
