@@ -156,7 +156,7 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 			if (parent == -1) {
 				break;
 			}
-			xform.origin -= skeleton->get_bone_rest(parent).origin;
+			xform = xform * skeleton->get_bone_rest(parent).affine_inverse();
 			parent = skeleton->get_bone_parent(parent);
 		}
 		skeleton->set_bone_rest(bone_i, xform);
@@ -193,6 +193,7 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 			surface->set_normal(normal);
 			x = vertices->at(vertex_i)->uv()->x();
 			y = vertices->at(vertex_i)->uv()->y();
+			z = 0.0f;
 			Vector2 uv = Vector2(x, y);
 			surface->set_uv(uv);
 			x = vertices->at(vertex_i)->position()->x();
@@ -311,9 +312,9 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 						break;
 						// nothing
 				}
-				surface->set_bones(bones);
-				surface->set_weights(weights);
 			}
+			surface->set_bones(bones);
+			surface->set_weights(weights);
 			surface->add_vertex(point);
 		}
 		std::vector<std::unique_ptr<mmd_pmx_t::face_t> > *faces = pmx.faces();
