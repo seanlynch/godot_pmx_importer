@@ -38,6 +38,7 @@
 #include "scene/animation/animation_player.h"
 #include "scene/resources/animation.h"
 #include "scene/resources/surface_tool.h"
+#include "editor/import/scene_importer_mesh_node_3d.h"
 
 #include <cstdint>
 #include <fstream>
@@ -152,7 +153,6 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	}
 	for (int32_t material_i = 0; material_i < material_index_counts.size(); material_i++) {
 		surface->begin(Mesh::PRIMITIVE_TRIANGLES);
-		MeshInstance3D *mesh_3d = memnew(MeshInstance3D);
 		std::vector<std::unique_ptr<mmd_pmx_t::vertex_t> > *vertices = pmx.vertices();
 		for (int32_t vertex_i = 0; vertex_i < pmx.vertex_count(); vertex_i++) {
 			real_t x = vertices->at(vertex_i)->normal()->x();
@@ -186,9 +186,11 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		}
 		surface->deindex();
 		surface->index();
-		Ref<ArrayMesh> mesh = surface->commit();
+		Array mesh_array = surface->commit_to_arrays();
 		surface->clear();
-		mesh_3d->set_mesh(mesh);
+		EditorSceneImporterMeshNode3D *mesh_3d = memnew(EditorSceneImporterMeshNode3D);
+		Ref<EditorSceneImporterMesh> mesh;
+		mesh.instantiate();
 		skeleton->add_child(mesh_3d);
 		std::string raw_material_name = materials->at(material_i)->english_name()->value();
 		if (raw_material_name.empty()) {
@@ -197,6 +199,18 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		String material_name;
 		material_name.parse_utf8(raw_material_name.data());
 		mesh_3d->set_name(material_name);
+		Ref<StandardMaterial3D> material;
+		material.instantiate();
+		uint32_t texture_index = materials->at(material_i)->texture_index()->value();
+		std::string raw_texture_path = pmx.textures()->at(texture_index)->name()->value();
+		String texture_path;
+		texture_path.parse_utf8(raw_texture_path.data());
+		texture_path = p_path.get_base_dir().plus_file(texture_path);
+		texture_path = texture_path.simplify_path();
+		Ref<Texture> base_color_tex = ResourceLoader::load(texture_path);
+		material->set_texture(StandardMaterial3D::TEXTURE_ALBEDO, base_color_tex);
+		mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, mesh_array, Array(), Dictionary(), material, material_name);
+		mesh_3d->set_mesh(mesh);
 		mesh_3d->set_owner(root);
 	}
 
