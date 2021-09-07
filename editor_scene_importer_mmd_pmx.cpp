@@ -225,10 +225,10 @@ void PackedSceneMMDPMX::pack_mmd_pmx(String p_path, int32_t p_flags,
 
 String PackedSceneMMDPMX::pick_universal_or_common(std::string p_universal, std::string p_common) {
 	String output_name;
-	output_name.parse_utf8(p_universal.data());
-	if (output_name.is_empty()) {
-		const std::string common_name = p_common;
-		output_name.parse_utf8(common_name.data());
+	if (p_universal.empty()) {
+		output_name.parse_utf8(p_common.data());
+	} else {
+		output_name.parse_utf8(p_universal.data());
 	}
 	return output_name;
 }
