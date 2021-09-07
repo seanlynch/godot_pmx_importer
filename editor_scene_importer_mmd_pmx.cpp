@@ -169,11 +169,6 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		uint32_t count = materials->at(material_i)->face_vertex_count();
 		material_index_counts.write[material_i].end = start + count;
 	}
-	EditorSceneImporterMeshNode3D *mesh_3d = memnew(EditorSceneImporterMeshNode3D);
-	Ref<EditorSceneImporterMesh> mesh;
-	mesh.instantiate();
-	String model_name = pick_universal_or_common(pmx.header()->english_model_name()->value(), pmx.header()->model_name()->value());
-	mesh_3d->set_name(model_name);
 	for (int32_t material_i = 0; material_i < material_index_counts.size(); material_i++) {
 		surface->begin(Mesh::PRIMITIVE_TRIANGLES);
 		std::vector<std::unique_ptr<mmd_pmx_t::vertex_t> > *vertices = pmx.vertices();
@@ -194,41 +189,57 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 			z = vertices->at(vertex_i)->position()->z();
 			z *= mmd_unit_conversion;
 			Vector3 point = Vector3(x, y, z);
-			PackedInt32Array bones;
-			bones.resize(RS::ARRAY_WEIGHTS_SIZE);
-			PackedFloat32Array weights;
-			weights.resize(RS::ARRAY_WEIGHTS_SIZE);
-			mmd_pmx_t::bone_type_t bone_type = vertices->at(vertex_i)->type();
-			switch (bone_type) {
-				case mmd_pmx_t::BONE_TYPE_BDEF1: {
-					mmd_pmx_t::bdef1_weights_t *pmx_weights = (mmd_pmx_t::bdef1_weights_t *)vertices->at(vertex_i)->skin_weights();
-					bones.write[0] = pmx_weights->bone_index()->value();
-					weights.write[0] = 1.0f;
-				} break;
-				case mmd_pmx_t::BONE_TYPE_BDEF2: {
-					mmd_pmx_t::bdef2_weights_t *pmx_weights = (mmd_pmx_t::bdef2_weights_t *)vertices->at(vertex_i)->skin_weights();
-					bones.write[0] = pmx_weights->bone_indices()->at(0)->value();
-					bones.write[1] = pmx_weights->bone_indices()->at(1)->value();
-					weights.write[0] = pmx_weights->weight1();
-					weights.write[1] = 1.0f - pmx_weights->weight1();
-				} break;
-				case mmd_pmx_t::BONE_TYPE_BDEF4: {
-					mmd_pmx_t::bdef4_weights_t *pmx_weights = (mmd_pmx_t::bdef4_weights_t *)vertices->at(vertex_i)->skin_weights();
-					for (int32_t count = 0; count < RS::ARRAY_WEIGHTS_SIZE; count++) {
-						bones.write[count] = pmx_weights->bone_indices()->at(count)->value();
-						weights.write[count] = pmx_weights->weights()->at(count);
-					}
-				} break;
-				case mmd_pmx_t::BONE_TYPE_SDEF: {
-				} break;
-				case mmd_pmx_t::BONE_TYPE_QDEF: {
-				} break;
-				default:
-					break;
-					// nothing
-			}
-			surface->set_bones(bones);
-			surface->set_weights(weights);
+			// PackedInt32Array bones;
+			// bones.resize(RS::ARRAY_WEIGHTS_SIZE);
+			// PackedFloat32Array weights;
+			// weights.resize(RS::ARRAY_WEIGHTS_SIZE);
+			// mmd_pmx_t::bone_type_t bone_type = vertices->at(vertex_i)->type();
+			// switch (bone_type) {
+			// 	case mmd_pmx_t::BONE_TYPE_BDEF1: {
+			// 		mmd_pmx_t::bdef1_weights_t *pmx_weights = (mmd_pmx_t::bdef1_weights_t *)vertices->at(vertex_i)->skin_weights();
+			// 		int32_t bone_index_0 = pmx_weights->bone_index()->value();
+			// 		bone_index_0 = CLAMP(bone_index_0, -1, UINT16_MAX);
+			// 		if (bone_index_0 != UINT16_MAX) {
+			// 			bones.write[0] = bone_index_0;
+			// 			weights.write[0] = 1.0f;
+			// 		}
+			// 	} break;
+			// 	case mmd_pmx_t::BONE_TYPE_BDEF2: {
+			// 		mmd_pmx_t::bdef2_weights_t *pmx_weights = (mmd_pmx_t::bdef2_weights_t *)vertices->at(vertex_i)->skin_weights();
+			// 		int32_t bone_index_0 = pmx_weights->bone_indices()->at(0)->value();
+			// 		bone_index_0 = CLAMP(bone_index_0, -1, UINT16_MAX);
+			// 		if (bone_index_0 != UINT16_MAX) {
+			// 			bones.write[0] = bone_index_0;
+			// 		}
+			// 		int32_t bone_index_1 = pmx_weights->bone_indices()->at(1)->value();
+			// 		bone_index_1 = CLAMP(bone_index_1, -1, UINT16_MAX);
+			// 		if (bone_index_1 != UINT16_MAX) {
+			// 			bones.write[0] = bone_index_1;
+			// 		}
+			// 		weights.write[0] = pmx_weights->weight1();
+			// 		weights.write[1] = 1.0f - pmx_weights->weight1();
+			// 	} break;
+			// 	case mmd_pmx_t::BONE_TYPE_BDEF4: {
+			// 		mmd_pmx_t::bdef4_weights_t *pmx_weights = (mmd_pmx_t::bdef4_weights_t *)vertices->at(vertex_i)->skin_weights();
+			// 		for (int32_t count = 0; count < RS::ARRAY_WEIGHTS_SIZE; count++) {
+			// 			int32_t bone_index = pmx_weights->bone_indices()->at(count)->value();
+			// 			bone_index = CLAMP(bone_index, -1, UINT16_MAX);
+			// 			if (bone_index != UINT16_MAX) {
+			// 				bones.write[count] = bone_index;
+			// 			}
+			// 			weights.write[count] = pmx_weights->weights()->at(count);
+			// 		}
+			// 	} break;
+			// 	case mmd_pmx_t::BONE_TYPE_SDEF: {
+			// 	} break;
+			// 	case mmd_pmx_t::BONE_TYPE_QDEF: {
+			// 	} break;
+			// 	default:
+			// 		break;
+			// 		// nothing
+			// }
+			// surface->set_bones(bones);
+			// surface->set_weights(weights);
 			surface->add_vertex(point);
 		}
 		std::vector<std::unique_ptr<mmd_pmx_t::face_t> > *faces = pmx.faces();
@@ -259,13 +270,17 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		material->set_texture(StandardMaterial3D::TEXTURE_ALBEDO, base_color_tex);
 		mmd_pmx_t::color4_t *diffuse = materials->at(material_i)->diffuse();
 		material->set_albedo(Color(diffuse->r(), diffuse->g(), diffuse->b(), diffuse->a()));
+		EditorSceneImporterMeshNode3D *mesh_3d = memnew(EditorSceneImporterMeshNode3D);
+		Ref<EditorSceneImporterMesh> mesh;
+		mesh.instantiate();
+		String model_name = pick_universal_or_common(pmx.header()->english_model_name()->value(), pmx.header()->model_name()->value());
+		mesh_3d->set_name(material_name);
 		mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, mesh_array, Array(), Dictionary(), material, material_name);
+		skeleton->add_child(mesh_3d);
+		mesh_3d->set_mesh(mesh);
+		mesh_3d->set_owner(root);
+		mesh_3d->set_skeleton_path(NodePath(".."));
 	}
-	mesh_3d->set_skeleton_path(NodePath(".."));
-	skeleton->add_child(mesh_3d);
-	mesh_3d->set_mesh(mesh);
-	mesh_3d->set_owner(root);
-
 	std::vector<std::unique_ptr<mmd_pmx_t::rigid_body_t> > *rigid_bodies = pmx.rigid_bodies();
 	for (uint32_t rigid_bodies_i = 0; rigid_bodies_i < pmx.rigid_body_count(); rigid_bodies_i++) {
 		RigidBody3D *rigid_3d = memnew(RigidBody3D);
