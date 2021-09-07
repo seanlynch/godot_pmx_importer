@@ -1,3 +1,9 @@
 Import('env')
 
-env.add_source_files(env.modules_sources, "*.cpp")
+env.Prepend(CPPPATH=['thirdparty/kaitai_struct_cpp_stl_runtime/'])
+env.Prepend(CPPPATH=['thirdparty/ksy/'])
+env.Prepend(CPPPATH=['.'])
+env.Append(CPPDEFINES=['KS_STR_ENCODING_NONE'])
+env.add_source_files(env.modules_sources, "thirdparty/kaitai_struct_cpp_stl_runtime/kaitai/*.cpp")
+env.add_source_files(env.modules_sources, "thirdparty/ksy/*.cpp")
+env.add_source_files(env.modules_sources, "src/*.cpp")

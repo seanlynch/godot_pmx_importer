@@ -57,7 +57,7 @@ class PMXMMDState : public Resource {
 	GDCLASS(PMXMMDState, Resource);
 	friend class PMXDocument;
 	friend class PackedSceneMMDPMX;
-}
+};
 
 class PackedSceneMMDPMX : public PackedScene {
 	GDCLASS(PackedSceneMMDPMX, PackedScene);
@@ -69,9 +69,6 @@ public:
 	virtual void save_scene(Node *p_node, const String &p_path, const String &p_src_path,
 			uint32_t p_flags, int p_bake_fps,
 			List<String> *r_missing_deps, Error *r_err = nullptr);
-	virtual void _build_parent_hierachy(Ref<PMXMMDState> state);
-	virtual Error export_mmd_pmx(Node *p_root, String p_path, int32_t p_flags = 0,
-			real_t p_bake_fps = 1000.0f);
 	virtual Node *import_scene(const String &p_path, uint32_t p_flags,
 			int p_bake_fps,
 			List<String> *r_missing_deps,
