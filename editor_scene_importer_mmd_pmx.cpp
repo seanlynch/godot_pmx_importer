@@ -194,6 +194,41 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 			z = vertices->at(vertex_i)->position()->z();
 			z *= mmd_unit_conversion;
 			Vector3 point = Vector3(x, y, z);
+			PackedInt32Array bones;
+			bones.resize(RS::ARRAY_WEIGHTS_SIZE);
+			PackedFloat32Array weights;
+			weights.resize(RS::ARRAY_WEIGHTS_SIZE);
+			mmd_pmx_t::bone_type_t bone_type = vertices->at(vertex_i)->type();
+			switch (bone_type) {
+				case mmd_pmx_t::BONE_TYPE_BDEF1: {
+					mmd_pmx_t::bdef1_weights_t *pmx_weights = (mmd_pmx_t::bdef1_weights_t *)vertices->at(vertex_i)->skin_weights();
+					bones.write[0] = pmx_weights->bone_index()->value();
+					weights.write[0] = 1.0f;
+				} break;
+				case mmd_pmx_t::BONE_TYPE_BDEF2: {
+					mmd_pmx_t::bdef2_weights_t *pmx_weights = (mmd_pmx_t::bdef2_weights_t *)vertices->at(vertex_i)->skin_weights();
+					bones.write[0] = pmx_weights->bone_indices()->at(0)->value();
+					bones.write[1] = pmx_weights->bone_indices()->at(1)->value();
+					weights.write[0] = pmx_weights->weight1();
+					weights.write[1] = 1.0f - pmx_weights->weight1();
+				} break;
+				case mmd_pmx_t::BONE_TYPE_BDEF4: {
+					mmd_pmx_t::bdef4_weights_t *pmx_weights = (mmd_pmx_t::bdef4_weights_t *)vertices->at(vertex_i)->skin_weights();
+					for (int32_t count = 0; count < RS::ARRAY_WEIGHTS_SIZE; count++) {
+						bones.write[count] = pmx_weights->bone_indices()->at(count)->value();
+						weights.write[count] = pmx_weights->weights()->at(count);
+					}
+				} break;
+				case mmd_pmx_t::BONE_TYPE_SDEF: {
+				} break;
+				case mmd_pmx_t::BONE_TYPE_QDEF: {
+				} break;
+				default:
+					break;
+					// nothing
+			}
+			surface->set_bones(bones);
+			surface->set_weights(weights);
 			surface->add_vertex(point);
 		}
 		std::vector<std::unique_ptr<mmd_pmx_t::face_t> > *faces = pmx.faces();
@@ -226,6 +261,7 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		material->set_albedo(Color(diffuse->r(), diffuse->g(), diffuse->b(), diffuse->a()));
 		mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, mesh_array, Array(), Dictionary(), material, material_name);
 	}
+	mesh_3d->set_skeleton_path(NodePath(".."));
 	skeleton->add_child(mesh_3d);
 	mesh_3d->set_mesh(mesh);
 	mesh_3d->set_owner(root);
