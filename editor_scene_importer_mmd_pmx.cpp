@@ -143,7 +143,7 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	};
 	Vector<MMDMaterialVertexCounts> material_index_counts;
 	material_index_counts.resize(pmx.material_count());
-	for (int32_t material_i = 0; material_i < pmx.material_count(); material_i++) {
+	for (uint32_t material_i = 0; material_i < pmx.material_count(); material_i++) {
 		if (material_i != 0) {
 			material_index_counts.write[material_i].start = material_index_counts[material_i - 1].end;
 		}
