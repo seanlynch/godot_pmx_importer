@@ -112,7 +112,11 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		if (skeleton->find_bone(output_name) != -1) {
 			output_name.parse_utf8(common.data());
 		}
+		BoneId bone = skeleton->get_bone_count();
 		skeleton->add_bone(output_name);
+		if (!bones->at(bone_i)->enabled()) {
+			skeleton->set_bone_enabled(bone, false);
+		}
 	}
 	for (int32_t bone_i = 0; bone_i < bone_count; bone_i++) {
 		Transform3D xform;
