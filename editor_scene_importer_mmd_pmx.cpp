@@ -32,13 +32,13 @@
 
 #include "thirdparty/ksy/mmd_pmx.h"
 
+#include "editor/import/scene_importer_mesh_node_3d.h"
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/node_3d.h"
 #include "scene/3d/physics_body_3d.h"
 #include "scene/animation/animation_player.h"
 #include "scene/resources/animation.h"
 #include "scene/resources/surface_tool.h"
-#include "editor/import/scene_importer_mesh_node_3d.h"
 
 #include <cstdint>
 #include <fstream>
@@ -151,6 +151,16 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		int32_t count = materials->at(material_i)->face_vertex_count();
 		material_index_counts.write[material_i].end = start + count;
 	}
+	EditorSceneImporterMeshNode3D *mesh_3d = memnew(EditorSceneImporterMeshNode3D);
+	Ref<EditorSceneImporterMesh> mesh;
+	mesh.instantiate();
+	std::string raw_model_name = pmx.header()->english_model_name()->value();
+	if (raw_model_name.empty()) {
+		raw_model_name = pmx.header()->model_name()->value();
+	}
+	String model_name;
+	model_name.parse_utf8(raw_model_name.data());
+	mesh_3d->set_name(model_name);
 	for (int32_t material_i = 0; material_i < material_index_counts.size(); material_i++) {
 		surface->begin(Mesh::PRIMITIVE_TRIANGLES);
 		std::vector<std::unique_ptr<mmd_pmx_t::vertex_t> > *vertices = pmx.vertices();
@@ -188,9 +198,6 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		surface->index();
 		Array mesh_array = surface->commit_to_arrays();
 		surface->clear();
-		EditorSceneImporterMeshNode3D *mesh_3d = memnew(EditorSceneImporterMeshNode3D);
-		Ref<EditorSceneImporterMesh> mesh;
-		mesh.instantiate();
 		skeleton->add_child(mesh_3d);
 		std::string raw_material_name = materials->at(material_i)->english_name()->value();
 		if (raw_material_name.empty()) {
@@ -198,7 +205,6 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		}
 		String material_name;
 		material_name.parse_utf8(raw_material_name.data());
-		mesh_3d->set_name(material_name);
 		Ref<StandardMaterial3D> material;
 		material.instantiate();
 		uint32_t texture_index = materials->at(material_i)->texture_index()->value();
@@ -212,9 +218,9 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		mmd_pmx_t::color4_t *diffuse = materials->at(material_i)->diffuse();
 		material->set_albedo(Color(diffuse->r(), diffuse->g(), diffuse->b(), diffuse->a()));
 		mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, mesh_array, Array(), Dictionary(), material, material_name);
-		mesh_3d->set_mesh(mesh);
-		mesh_3d->set_owner(root);
 	}
+	mesh_3d->set_mesh(mesh);
+	mesh_3d->set_owner(root);
 
 	std::vector<std::unique_ptr<mmd_pmx_t::rigid_body_t> > *rigid_bodies = pmx.rigid_bodies();
 	for (int32_t rigid_bodies_i = 0; rigid_bodies_i < pmx.rigid_body_count(); rigid_bodies_i++) {
