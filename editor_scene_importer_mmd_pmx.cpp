@@ -128,8 +128,8 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	Ref<SurfaceTool> surface;
 	surface.instantiate();
 	struct MMDMaterialVertexCounts {
-		int32_t start = 0;
-		int32_t end = 0;
+		uint32_t start = 0;
+		uint32_t end = 0;
 	};
 	Vector<MMDMaterialVertexCounts> material_index_counts;
 	material_index_counts.resize(pmx.material_count());
@@ -149,7 +149,7 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	for (int32_t material_i = 0; material_i < material_index_counts.size(); material_i++) {
 		surface->begin(Mesh::PRIMITIVE_TRIANGLES);
 		std::vector<std::unique_ptr<mmd_pmx_t::vertex_t> > *vertices = pmx.vertices();
-		for (int32_t vertex_i = 0; vertex_i < pmx.vertex_count(); vertex_i++) {
+		for (uint32_t vertex_i = 0; vertex_i < pmx.vertex_count(); vertex_i++) {
 			real_t x = vertices->at(vertex_i)->normal()->x();
 			real_t y = vertices->at(vertex_i)->normal()->y();
 			real_t z = vertices->at(vertex_i)->normal()->z();
@@ -169,7 +169,7 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 			surface->add_vertex(point);
 		}
 		std::vector<std::unique_ptr<mmd_pmx_t::face_t> > *faces = pmx.faces();
-		for (int32_t face_vertex_i = material_index_counts[material_i].start - 1; face_vertex_i < material_index_counts[material_i].end;
+		for (uint32_t face_vertex_i = material_index_counts[material_i].start - 1; face_vertex_i < material_index_counts[material_i].end;
 				face_vertex_i += 3) {
 			int32_t face_i = face_vertex_i / 3;
 			int32_t index = faces->at(face_i)->indices()->at(0)->value();
@@ -203,7 +203,7 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	mesh_3d->set_owner(root);
 
 	std::vector<std::unique_ptr<mmd_pmx_t::rigid_body_t> > *rigid_bodies = pmx.rigid_bodies();
-	for (int32_t rigid_bodies_i = 0; rigid_bodies_i < pmx.rigid_body_count(); rigid_bodies_i++) {
+	for (uint32_t rigid_bodies_i = 0; rigid_bodies_i < pmx.rigid_body_count(); rigid_bodies_i++) {
 		RigidBody3D *rigid_3d = memnew(RigidBody3D);
 		String rigid_name = pick_universal_or_common(rigid_bodies->at(rigid_bodies_i)->english_name()->value(),
 				rigid_bodies->at(rigid_bodies_i)->name()->value());
