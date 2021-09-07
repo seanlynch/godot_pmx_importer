@@ -146,9 +146,11 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	for (uint32_t material_i = 0; material_i < pmx.material_count(); material_i++) {
 		if (material_i != 0) {
 			material_index_counts.write[material_i].start = material_index_counts[material_i - 1].end;
+		} else {
+			material_index_counts.write[material_i].start = 0;
 		}
-		int32_t start = material_index_counts[material_i].start;
-		int32_t count = materials->at(material_i)->face_vertex_count();
+		uint32_t start = material_index_counts[material_i].start;
+		uint32_t count = materials->at(material_i)->face_vertex_count();
 		material_index_counts.write[material_i].end = start + count;
 	}
 	for (int32_t material_i = 0; material_i < material_index_counts.size(); material_i++) {
@@ -174,10 +176,10 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 			surface->add_vertex(point);
 		}
 		std::vector<std::unique_ptr<mmd_pmx_t::face_t> > *faces = pmx.faces();
-		for (uint32_t face_vertex_i = material_index_counts[material_i].start - 1; face_vertex_i < material_index_counts[material_i].end;
+		for (uint32_t face_vertex_i = material_index_counts[material_i].start; face_vertex_i < material_index_counts[material_i].end;
 				face_vertex_i += 3) {
-			int32_t face_i = face_vertex_i / 3;
-			int32_t index = faces->at(face_i)->indices()->at(0)->value();
+			uint32_t face_i = face_vertex_i / 3;
+			uint32_t index = faces->at(face_i)->indices()->at(0)->value();
 			surface->add_index(index);
 			index = faces->at(face_i)->indices()->at(2)->value();
 			surface->add_index(index);
