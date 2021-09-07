@@ -96,14 +96,23 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	Skeleton3D *skeleton = memnew(Skeleton3D);
 
 	for (int32_t bone_i = 0; bone_i < pmx.bone_count(); bone_i++) {
-		std::string name = bones->at(bone_i)->name()->value();
+		std::string name = bones->at(bone_i)->english_name()->value();
 		String bone_name;
-		bone_name.parse_utf8(name.data(), bones->at(bone_i)->name()->length());
+		bone_name.parse_utf8(name.data());
 		skeleton->add_bone(bone_name);
 	}
 	for (int32_t bone_i = 0; bone_i < pmx.bone_count(); bone_i++) {
 		int32_t parent_index = bones->at(bone_i)->parent_index()->value();
 		skeleton->set_bone_parent(bone_i, parent_index);
+		Transform3D xform;
+		real_t x = bones->at(bone_i)->position()->x();
+		x *= mmd_unit_conversion;
+		real_t y = bones->at(bone_i)->position()->y();
+		y *= mmd_unit_conversion;
+		real_t z = bones->at(bone_i)->position()->z();
+		z *= mmd_unit_conversion;
+		xform.origin = Vector3(x, y, z);
+		skeleton->set_bone_rest(bone_i, xform);
 	}
 	root->add_child(skeleton);
 	skeleton->set_owner(root);
@@ -129,7 +138,7 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	mesh_3d->set_mesh(mesh);
 	std::string std_name = pmx.header()->english_model_name()->value();
 	String model_name;
-	model_name.parse_utf8(std_name.data(), pmx.header()->english_model_name()->length());
+	model_name.parse_utf8(std_name.data());
 	mesh_3d->set_name(model_name);
 	skeleton->add_child(mesh_3d);
 	mesh_3d->set_owner(root);
@@ -137,9 +146,9 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	std::vector<std::unique_ptr<mmd_pmx_t::rigid_body_t> > *rigid_bodies = pmx.rigid_bodies();
 	for (int32_t rigid_bodies_i = 0; rigid_bodies_i < pmx.rigid_body_count(); rigid_bodies_i++) {
 		RigidBody3D *rigid_3d = memnew(RigidBody3D);
-		std::string std_name = rigid_bodies->at(rigid_bodies_i)->name()->value();
+		std::string std_name = rigid_bodies->at(rigid_bodies_i)->english_name()->value();
 		String rigid_name;
-		rigid_name.parse_utf8(std_name.data(), rigid_bodies->at(rigid_bodies_i)->name()->length());
+		rigid_name.parse_utf8(std_name.data());
 		rigid_3d->set_name(rigid_name);
 		root->add_child(rigid_3d);
 		rigid_3d->set_owner(root);
@@ -167,8 +176,11 @@ void PackedSceneMMDPMX::create_vertex(int32_t p_vertex, const std::vector<std::u
 	Vector2 uv = Vector2(x, y);
 	p_surface->set_uv(uv);
 	x = p_vertices->at(p_vertex)->position()->x();
+	x *= mmd_unit_conversion;
 	y = p_vertices->at(p_vertex)->position()->y();
+	y *= mmd_unit_conversion;
 	z = p_vertices->at(p_vertex)->position()->z();
+	z *= mmd_unit_conversion;
 	Vector3 point = Vector3(x, y, z);
 	p_surface->add_vertex(point);
 }
