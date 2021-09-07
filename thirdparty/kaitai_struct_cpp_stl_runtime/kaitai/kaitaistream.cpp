@@ -574,10 +574,6 @@ std::string kaitai::kstream::to_string(int val) {
     char buf[25];
     int got_len = snprintf(buf, sizeof(buf), "%d", val);
 
-    // should never happen, but check nonetheless
-    if (got_len > sizeof(buf))
-        throw std::invalid_argument("to_string: integer is longer than string buffer");
-
     return std::string(buf);
 }
 
