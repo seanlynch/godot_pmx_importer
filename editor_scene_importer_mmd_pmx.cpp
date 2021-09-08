@@ -119,48 +119,43 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		}
 	}
 	for (int32_t bone_i = 0; bone_i < bone_count; bone_i++) {
-		Vector3 parent_origin;
+		Transform3D xform;
+		real_t x = bones->at(bone_i)->position()->x();
+		real_t y = bones->at(bone_i)->position()->y();
+		real_t z = bones->at(bone_i)->position()->z();
+		xform.origin = Vector3(x, y, z);
+		int64_t parent_index = -1;
 		switch (bones->at(bone_i)->parent_index()->size()) {
 			case 1: {
-				uint8_t parent_index = bones->at(bone_i)->parent_index()->value();
+				parent_index = bones->at(bone_i)->parent_index()->value();
 				if (parent_index == UINT8_MAX) {
-					continue;
+					parent_index = -1;
 				}
-				parent_origin.x = bones->at(parent_index)->position()->x();
-				parent_origin.y = bones->at(parent_index)->position()->y();
-				parent_origin.z = bones->at(parent_index)->position()->z();
-				skeleton->set_bone_parent(bone_i, parent_index);
 			} break;
 			case 2: {
-				uint16_t parent_index = bones->at(bone_i)->parent_index()->value();
+				parent_index = bones->at(bone_i)->parent_index()->value();
 				if (parent_index == UINT16_MAX) {
-					continue;
+					parent_index = -1;
 				}
-				parent_origin.x = bones->at(parent_index)->position()->x();
-				parent_origin.y = bones->at(parent_index)->position()->y();
-				parent_origin.z = bones->at(parent_index)->position()->z();
-				skeleton->set_bone_parent(bone_i, parent_index);
 			} break;
 			case 4: {
-				uint32_t parent_index = bones->at(bone_i)->parent_index()->value();
+				parent_index = bones->at(bone_i)->parent_index()->value();
 				if (parent_index == UINT32_MAX) {
-					continue;
+					parent_index = -1;
 				}
-				parent_origin.x = bones->at(parent_index)->position()->x();
-				parent_origin.y = bones->at(parent_index)->position()->y();
-				parent_origin.z = bones->at(parent_index)->position()->z();
-				skeleton->set_bone_parent(bone_i, parent_index);
 			} break;
 			default:
 				break;
 				// nothing
 		}
-		Transform3D xform;
-		real_t x = bones->at(bone_i)->position()->x();
-		real_t y = bones->at(bone_i)->position()->y();
-		real_t z = bones->at(bone_i)->position()->z();
-		xform.origin = Vector3(x, y, z) - parent_origin;
+		if (parent_index == -1) {
+			real_t parent_x = bones->at(bone_i)->position()->x();
+			real_t parent_y = bones->at(bone_i)->position()->y();
+			real_t parent_z = bones->at(bone_i)->position()->z();
+			xform.origin -= Vector3(parent_x, parent_y, parent_z);
+		}
 		skeleton->set_bone_rest(bone_i, xform);
+		skeleton->set_bone_parent(bone_i, parent_index);
 	}
 	root->add_child(skeleton);
 	skeleton->set_owner(root);
