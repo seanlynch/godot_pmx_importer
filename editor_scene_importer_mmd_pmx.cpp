@@ -148,7 +148,7 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 				break;
 				// nothing
 		}
-		if (parent_index == -1) {
+		if (parent_index != -1) {
 			real_t parent_x = bones->at(bone_i)->position()->x();
 			real_t parent_y = bones->at(bone_i)->position()->y();
 			real_t parent_z = bones->at(bone_i)->position()->z();
