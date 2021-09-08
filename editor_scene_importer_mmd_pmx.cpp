@@ -39,6 +39,7 @@
 #include "scene/animation/animation_player.h"
 #include "scene/resources/animation.h"
 #include "scene/resources/surface_tool.h"
+#include <unistd.h>
 
 #include <cstdint>
 #include <fstream>
@@ -325,14 +326,37 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		String material_name = pick_universal_or_common(materials->at(material_i)->english_name()->value(), materials->at(material_i)->name()->value());
 		Ref<StandardMaterial3D> material;
 		material.instantiate();
-		uint32_t texture_index = materials->at(material_i)->texture_index()->value();
-		std::string raw_texture_path = pmx.textures()->at(texture_index)->name()->value();
+		int64_t texture_size =materials->at(material_i)->texture_index()->size();
 		String texture_path;
-		texture_path.parse_utf8(raw_texture_path.data());
-		texture_path = p_path.get_base_dir().plus_file(texture_path);
-		texture_path = texture_path.simplify_path();
-		Ref<Texture> base_color_tex = ResourceLoader::load(texture_path);
-		material->set_texture(StandardMaterial3D::TEXTURE_ALBEDO, base_color_tex);
+		int64_t texture_index = materials->at(material_i)->texture_index()->value();
+		switch (texture_size) {
+			case 1: {
+				if (texture_index != UINT8_MAX) {
+					std::string raw_texture_path = pmx.textures()->at(texture_index)->name()->value();
+					texture_path.parse_utf8(raw_texture_path.data());
+				}
+			} break;
+			case 2: {
+				if (texture_index != UINT16_MAX) {
+					std::string raw_texture_path = pmx.textures()->at(texture_index)->name()->value();
+					texture_path.parse_utf8(raw_texture_path.data());
+				}
+			} break;
+			case 4: {
+				if (texture_index != UINT32_MAX) {
+					std::string raw_texture_path = pmx.textures()->at(texture_index)->name()->value();
+					texture_path.parse_utf8(raw_texture_path.data());
+				}
+			} break;
+			default:
+				break;
+		}
+		if (!texture_path.is_empty()) {
+			texture_path = p_path.get_base_dir().plus_file(texture_path);
+			texture_path = texture_path.simplify_path();
+			Ref<Texture> base_color_tex = ResourceLoader::load(texture_path);
+			material->set_texture(StandardMaterial3D::TEXTURE_ALBEDO, base_color_tex);
+		}
 		mmd_pmx_t::color4_t *diffuse = materials->at(material_i)->diffuse();
 		material->set_albedo(Color(diffuse->r(), diffuse->g(), diffuse->b(), diffuse->a()));
 		EditorSceneImporterMeshNode3D *mesh_3d = memnew(EditorSceneImporterMeshNode3D);
