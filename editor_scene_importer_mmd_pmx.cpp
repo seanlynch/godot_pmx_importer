@@ -128,8 +128,11 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 			Vector2 uv = Vector2(x, y);
 			surface->set_uv(uv);
 			x = vertices->at(vertex_i)->position()->x();
+			x *= mmd_unit_conversion;
 			y = vertices->at(vertex_i)->position()->y();
+			y *= mmd_unit_conversion;
 			z = vertices->at(vertex_i)->position()->z();
+			z *= mmd_unit_conversion;
 			Vector3 point = Vector3(x, y, z);
 			PackedInt32Array bones;
 			bones.push_back(0);
