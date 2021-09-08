@@ -320,8 +320,6 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 			index = faces->at(face_i)->indices()->at(1)->value();
 			surface->add_index(index);
 		}
-		surface->deindex();
-		surface->index();
 		Array mesh_array = surface->commit_to_arrays();
 		surface->clear();
 		String material_name = pick_universal_or_common(materials->at(material_i)->english_name()->value(), materials->at(material_i)->name()->value());
