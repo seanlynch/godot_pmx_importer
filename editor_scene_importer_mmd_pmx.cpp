@@ -307,6 +307,13 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 				}
 			}
 			surface->set_bones(bones);
+			real_t renorm = weights[0] + weights[1] + weights[2] + weights[3];
+			if (renorm != 0.0 && renorm != 1.0) {
+				weights.write[0] /= renorm;
+				weights.write[1] /= renorm;
+				weights.write[2] /= renorm;
+				weights.write[3] /= renorm;
+			}
 			surface->set_weights(weights);
 			surface->add_vertex(point);
 		}
@@ -326,7 +333,7 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		String material_name = pick_universal_or_common(materials->at(material_i)->english_name()->value(), materials->at(material_i)->name()->value());
 		Ref<StandardMaterial3D> material;
 		material.instantiate();
-		int64_t texture_size =materials->at(material_i)->texture_index()->size();
+		int64_t texture_size = materials->at(material_i)->texture_index()->size();
 		String texture_path;
 		int64_t texture_index = materials->at(material_i)->texture_index()->value();
 		switch (texture_size) {
