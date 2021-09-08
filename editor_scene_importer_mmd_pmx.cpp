@@ -160,6 +160,7 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	}
 	root->add_child(skeleton);
 	skeleton->set_owner(root);
+	skeleton->localize_rests();
 	std::vector<std::unique_ptr<mmd_pmx_t::material_t> > *materials = pmx.materials();
 	struct MMDMaterialVertexCounts {
 		uint32_t start = 0;
