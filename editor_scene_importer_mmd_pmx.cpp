@@ -211,23 +211,21 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 				switch (bone_type) {
 					case mmd_pmx_t::BONE_TYPE_BDEF1: {
 						mmd_pmx_t::bdef1_weights_t *pmx_weights = (mmd_pmx_t::bdef1_weights_t *)vertices->at(vertex_i)->skin_weights();
+						int64_t bone_index = pmx_weights->bone_index()->value();
 						switch (pmx_weights->bone_index()->size()) {
 							case 1: {
-								uint8_t bone_index = pmx_weights->bone_index()->value();
 								if (bone_index != UINT8_MAX) {
 									bones.write[0] = bone_index;
 									weights.write[0] = 1.0f;
 								}
 							} break;
 							case 2: {
-								uint16_t bone_index = pmx_weights->bone_index()->value();
 								if (bone_index != UINT16_MAX) {
 									bones.write[0] = bone_index;
 									weights.write[0] = 1.0f;
 								}
 							} break;
 							case 4: {
-								uint32_t bone_index = pmx_weights->bone_index()->value();
 								if (bone_index != UINT32_MAX) {
 									bones.write[0] = bone_index;
 									weights.write[0] = 1.0f;
@@ -241,23 +239,21 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 					case mmd_pmx_t::BONE_TYPE_BDEF2: {
 						mmd_pmx_t::bdef2_weights_t *pmx_weights = (mmd_pmx_t::bdef2_weights_t *)vertices->at(vertex_i)->skin_weights();
 						for (int32_t count = 0; count < 2; count++) {
+							int64_t bone_index = pmx_weights->bone_indices()->at(count)->value();
 							switch (pmx_weights->bone_indices()->at(count)->size()) {
 								case 1: {
-									uint8_t bone_index = pmx_weights->bone_indices()->at(count)->value();
 									if (bone_index != UINT8_MAX) {
 										bones.write[count] = bone_index;
 										weights.write[count] = pmx_weights->weights()->at(count);
 									}
 								} break;
 								case 2: {
-									uint16_t bone_index = pmx_weights->bone_indices()->at(count)->value();
 									if (bone_index != UINT16_MAX) {
 										bones.write[count] = bone_index;
 										weights.write[count] = pmx_weights->weights()->at(count);
 									}
 								} break;
 								case 4: {
-									uint32_t bone_index = pmx_weights->bone_indices()->at(count)->value();
 									if (bone_index != UINT32_MAX) {
 										bones.write[count] = bone_index;
 										weights.write[count] = pmx_weights->weights()->at(count);
