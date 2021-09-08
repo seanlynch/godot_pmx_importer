@@ -149,9 +149,9 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 				// nothing
 		}
 		if (parent_index != -1) {
-			real_t parent_x = bones->at(bone_i)->position()->x();
-			real_t parent_y = bones->at(bone_i)->position()->y();
-			real_t parent_z = bones->at(bone_i)->position()->z();
+			real_t parent_x = bones->at(parent_index)->position()->x();
+			real_t parent_y = bones->at(parent_index)->position()->y();
+			real_t parent_z = bones->at(parent_index)->position()->z();
 			xform.origin -= Vector3(parent_x, parent_y, parent_z);
 		}
 		skeleton->set_bone_rest(bone_i, xform);
