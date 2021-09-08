@@ -337,9 +337,9 @@ void PackedSceneMMDPMX::pack_mmd_pmx(String p_path, int32_t p_flags,
 String PackedSceneMMDPMX::pick_universal_or_common(std::string p_universal, std::string p_common) {
 	String output_name;
 	if (p_universal.empty()) {
-		output_name.parse_utf8(p_common.data());
+		output_name = (const wchar_t *)p_common.c_str();
 	} else {
-		output_name.parse_utf8(p_universal.data());
+		output_name = (const wchar_t *)p_universal.c_str();
 	}
 	return output_name;
 }
