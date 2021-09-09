@@ -65,6 +65,8 @@ class PackedSceneMMDPMX : public PackedScene {
 
 	const real_t mmd_unit_conversion = 0.079f;
 	String pick_universal_or_common(std::string p_universal, std::string p_common);
+	void add_vertex(Ref<SurfaceTool> surface, mmd_pmx_t::vertex_t* vertex);
+	bool is_valid_index(mmd_pmx_t::sized_index_t* index);
 
 protected:
 	static void _bind_methods();
