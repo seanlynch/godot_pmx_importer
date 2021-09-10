@@ -1,9 +1,5 @@
 name: 🍎 Macos Builds
-on:
-  push:
-    branches: [master, godot, github_actions]
-  pull_request:
-    branches: [master]
+on: [push, pull_request]
 
 # Global Cache Settings
 env:
