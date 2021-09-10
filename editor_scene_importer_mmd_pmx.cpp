@@ -39,7 +39,6 @@
 #include "scene/animation/animation_player.h"
 #include "scene/resources/animation.h"
 #include "scene/resources/surface_tool.h"
-#include <unistd.h>
 
 #include <cstdint>
 #include <fstream>
@@ -272,13 +271,13 @@ void PackedSceneMMDPMX::pack_mmd_pmx(String p_path, int32_t p_flags,
 String PackedSceneMMDPMX::convert_string(const std::string& s, uint8_t encoding) const {
 	String output;
 	if (encoding == 0) {
-		char16_t *buf = new char16_t[s.length() / 2];
+		Vector<char16_t> buf;
+		buf.resize(s.length() / 2);
 	    const char *src = s.data();
 		for (size_t i = 0; i < s.length() / 2; i++) {
-			buf[i] = src[i*2] | (src[i*2+1] << 8);
+			buf.set(i, src[i*2] | (src[i*2+1] << 8));
 		}
-		output.parse_utf16(buf, s.length() / 2);
-		delete[] buf;
+		output.parse_utf16(buf.ptr(), s.length() / 2);
 	} else {
 		output.parse_utf8(s.data(), s.length());
 	}
