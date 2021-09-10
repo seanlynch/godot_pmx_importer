@@ -68,7 +68,7 @@ Ref<Animation> EditorSceneImporterMMDPMX::import_animation(const String &p_path,
 	return Ref<Animation>();
 }
 
-bool PackedSceneMMDPMX::is_valid_index(mmd_pmx_t::sized_index_t* index) {
+bool PackedSceneMMDPMX::is_valid_index(mmd_pmx_t::sized_index_t* index) const {
 	int64_t bone_index = index->value();
 	switch (index->size()) {
 	case 1: return bone_index != UINT8_MAX;
@@ -78,7 +78,7 @@ bool PackedSceneMMDPMX::is_valid_index(mmd_pmx_t::sized_index_t* index) {
 	}
 }
 
-void PackedSceneMMDPMX::add_vertex(Ref<SurfaceTool> surface, mmd_pmx_t::vertex_t* vertex) {
+void PackedSceneMMDPMX::add_vertex(Ref<SurfaceTool> surface, mmd_pmx_t::vertex_t* vertex) const {
 	Vector3 normal = Vector3(vertex->normal()->x(),
 							 vertex->normal()->y(),
 							 vertex->normal()->z());
@@ -201,7 +201,7 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		surface->index();
 		Array mesh_array = surface->commit_to_arrays();
 		surface->clear();
-		String material_name = pick_universal_or_common(materials->at(material_i)->english_name()->value(), materials->at(material_i)->name()->value());
+		String material_name = pick_universal_or_common(materials->at(material_i)->english_name()->value(), materials->at(material_i)->name()->value(), pmx.header()->encoding());
 		Ref<StandardMaterial3D> material;
 		material.instantiate();
 		int64_t texture_size = materials->at(material_i)->texture_index()->size();
@@ -211,19 +211,19 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 			case 1: {
 				if (texture_index != UINT8_MAX) {
 					std::string raw_texture_path = pmx.textures()->at(texture_index)->name()->value();
-					texture_path.parse_utf8(raw_texture_path.data());
+					texture_path = convert_string(raw_texture_path, pmx.header()->encoding());
 				}
 			} break;
 			case 2: {
 				if (texture_index != UINT16_MAX) {
 					std::string raw_texture_path = pmx.textures()->at(texture_index)->name()->value();
-					texture_path.parse_utf8(raw_texture_path.data());
+					texture_path = convert_string(raw_texture_path, pmx.header()->encoding());
 				}
 			} break;
 			case 4: {
 				if (texture_index != UINT32_MAX) {
 					std::string raw_texture_path = pmx.textures()->at(texture_index)->name()->value();
-					texture_path.parse_utf8(raw_texture_path.data());
+					texture_path = convert_string(raw_texture_path, pmx.header()->encoding());
 				}
 			} break;
 			default:
@@ -240,7 +240,7 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 		EditorSceneImporterMeshNode3D *mesh_3d = memnew(EditorSceneImporterMeshNode3D);
 		Ref<EditorSceneImporterMesh> mesh;
 		mesh.instantiate();
-		String model_name = pick_universal_or_common(pmx.header()->english_model_name()->value(), pmx.header()->model_name()->value());
+		String model_name = pick_universal_or_common(pmx.header()->english_model_name()->value(), pmx.header()->model_name()->value(), pmx.header()->encoding());
 		mesh_3d->set_name(material_name);
 		mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, mesh_array, Array(), Dictionary(), material, material_name);
 		root->add_child(mesh_3d);
@@ -251,7 +251,8 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 	for (uint32_t rigid_bodies_i = 0; rigid_bodies_i < pmx.rigid_body_count(); rigid_bodies_i++) {
 		RigidBody3D *rigid_3d = memnew(RigidBody3D);
 		String rigid_name = pick_universal_or_common(rigid_bodies->at(rigid_bodies_i)->english_name()->value(),
-				rigid_bodies->at(rigid_bodies_i)->name()->value());
+													 rigid_bodies->at(rigid_bodies_i)->name()->value(),
+													 pmx.header()->encoding());
 		rigid_3d->set_name(rigid_name);
 		root->add_child(rigid_3d);
 		rigid_3d->set_owner(root);
@@ -268,12 +269,26 @@ void PackedSceneMMDPMX::pack_mmd_pmx(String p_path, int32_t p_flags,
 	pack(root);
 }
 
-String PackedSceneMMDPMX::pick_universal_or_common(std::string p_universal, std::string p_common) {
-	String output_name;
-	if (p_universal.empty()) {
-		output_name.parse_utf8(p_common.data());
+String PackedSceneMMDPMX::convert_string(const std::string& s, uint8_t encoding) const {
+	String output;
+	if (encoding == 0) {
+		char16_t *buf = new char16_t[s.length() / 2];
+	    const char *src = s.data();
+		for (size_t i = 0; i < s.length() / 2; i++) {
+			buf[i] = src[i*2] | (src[i*2+1] << 8);
+		}
+		output.parse_utf16(buf, s.length() / 2);
+		delete[] buf;
 	} else {
-		output_name.parse_utf8(p_universal.data());
+		output.parse_utf8(s.data(), s.length());
 	}
-	return output_name;
+	return output;
+}
+
+String PackedSceneMMDPMX::pick_universal_or_common(std::string p_universal, std::string p_common, uint8_t encoding) {
+	if (p_universal.empty()) {
+		return convert_string(p_common, encoding);
+	} else {
+		return convert_string(p_universal, encoding);
+	}
 }
