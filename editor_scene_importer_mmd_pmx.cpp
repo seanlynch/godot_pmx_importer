@@ -180,7 +180,7 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 
 	std::vector<std::unique_ptr<mmd_pmx_t::material_t> > *materials = pmx.materials();
 	uint32_t face_start = 0;
-	for (int32_t material_i = 0; material_i < pmx.material_count(); material_i++) {
+	for (uint32_t material_i = 0; material_i < pmx.material_count(); material_i++) {
 		Ref<SurfaceTool> surface;
 		surface.instantiate();
 		surface->begin(Mesh::PRIMITIVE_TRIANGLES);
