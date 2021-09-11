@@ -39,6 +39,7 @@
 #include "scene/animation/animation_player.h"
 #include "scene/resources/animation.h"
 #include "scene/resources/surface_tool.h"
+#include "core/core_bind.h"
 
 #include <cstdint>
 #include <fstream>
@@ -228,9 +229,30 @@ Node *PackedSceneMMDPMX::import_scene(const String &p_path, uint32_t p_flags,
 			default:
 				break;
 		}
+
 		if (!texture_path.is_empty()) {
-			texture_path = p_path.get_base_dir().plus_file(texture_path);
 			texture_path = texture_path.simplify_path();
+			Vector<String> path_components = texture_path.split("/");
+			texture_path = p_path.get_base_dir();
+			core_bind::Directory dir;
+			for (const String& elem : path_components) {
+				if (dir.open(texture_path) == OK) {
+					dir.list_dir_begin();
+					String file_name = dir.get_next();
+					while (!file_name.is_empty()) {
+						if (elem.nocasecmp_to(file_name) == 0) {
+							texture_path = texture_path.plus_file(file_name);
+							break;
+						}
+						file_name = dir.get_next();
+					}
+					if (file_name.is_empty()) {
+						print_line(vformat("Couldn't find texture path %s", texture_path));
+						break;
+					}
+				}
+			}
+			print_verbose(vformat("Found texture %s", texture_path));
 			Ref<Texture> base_color_tex = ResourceLoader::load(texture_path);
 			material->set_texture(StandardMaterial3D::TEXTURE_ALBEDO, base_color_tex);
 		}
